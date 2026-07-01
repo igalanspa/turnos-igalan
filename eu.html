@@ -232,6 +232,7 @@ const KEY="igalan_turnos_eu_v2";
 const CLOUD_PATH="igalan_turnos_eu";
 const LIBROS=[{slug:"eu",grupo:"EU",label:"Enfermeras (EU)"}];
 let est="eu";
+let MES=new Date().getMonth(),ANIO=new Date().getFullYear();
 let STORE=cargar();
 function cargar(){let s;try{s=JSON.parse(localStorage.getItem(KEY));}catch(e){}
   s=s||{};LIBROS.forEach(l=>{s[l.slug]=s[l.slug]||{};s[l.slug].tarifas=s[l.slug].tarifas||{};s[l.slug].turnos=s[l.slug].turnos||{};s[l.slug].ajustes=s[l.slug].ajustes||{};s[l.slug].mut=s[l.slug].mut||{};s[l.slug].roster=s[l.slug].roster||{};s[l.slug].extra=s[l.slug].extra||{};});return s;}
@@ -244,12 +245,12 @@ function personas(){const g=LIBROS.find(l=>l.slug===est).grupo;return TODOS.filt
   const hoy=new Date();
   MESES.forEach((m,i)=>{const o=document.createElement("option");o.value=i;o.textContent=m;$("mes").appendChild(o);});
   for(let y=hoy.getFullYear()-1;y<=hoy.getFullYear()+2;y++){const o=document.createElement("option");o.value=y;o.textContent=y;$("anio").appendChild(o);}
-  $("mes").value=hoy.getMonth();$("anio").value=hoy.getFullYear();
+  $("mes").value=hoy.getMonth();$("anio").value=hoy.getFullYear();MES=hoy.getMonth();ANIO=hoy.getFullYear();
   $("mes").onchange=$("anio").onchange=function(){userMes=true;refrescar();};
 })();
 function cambiarLibro(s){est=s;document.querySelectorAll(".book").forEach(b=>b.classList.toggle("active",b.classList.contains(s)));refrescar();}
-function mesKey(){return $("anio").value+"-"+String(+$("mes").value+1).padStart(2,"0");}
-function diasMes(){return new Date(+$("anio").value,+$("mes").value+1,0).getDate();}
+function mesKey(){return ANIO+"-"+String(MES+1).padStart(2,"0");}
+function diasMes(){return new Date(ANIO,MES+1,0).getDate();}
 function turnosMes(){const k=mesKey();E().turnos[k]=E().turnos[k]||{};return E().turnos[k];}
 function ajustesMes(){const k=mesKey();E().ajustes[k]=E().ajustes[k]||{};return E().ajustes[k];}
 function mutMes(){const k=mesKey();E().mut=E().mut||{};E().mut[k]=E().mut[k]||{};return E().mut[k];}
@@ -266,12 +267,12 @@ function aplicarRosterMes(){const rm=rosterMes();Object.keys(rm).forEach(d=>reco
 function aplicarPautaTodo(){aplicarRosterMes();persistir();renderCal();renderRes();renderCalBox();flash();alert("Pauta aplicada al Calendario 1. Ahora puedes ajustar el Calendario a mano si lo necesitas.");}
 let mesAuto=false,userMes=false;
 function mesesConDatos(){const set=new Set();["turnos","roster","ajustes","extra"].forEach(k=>{const o=(E()[k])||{};Object.keys(o).forEach(mk=>{const v=o[mk];const has=(k==="extra")?(Array.isArray(v)&&v.length):(v&&Object.keys(v).length);if(has)set.add(mk);});});return [...set].sort();}
-function autoMes(){if(mesAuto||userMes)return;const arr=mesesConDatos();if(!arr.length)return;const mk=mesKey();if(!arr.includes(mk)){const last=arr[arr.length-1].split("-");$("anio").value=+last[0];$("mes").value=(+last[1]-1);}mesAuto=true;}
+function autoMes(){if(mesAuto||userMes)return;const arr=mesesConDatos();if(!arr.length)return;const mk=mesKey();if(!arr.includes(mk)){const last=arr[arr.length-1].split("-");$("anio").value=+last[0];$("mes").value=(+last[1]-1);ANIO=+last[0];MES=(+last[1]-1);}mesAuto=true;}
 function safe(f){try{f();}catch(e){console.warn("render",e);}}
-function refrescar(){actualizarBooks();const te=document.querySelector(".tab-extra");if(te)te.style.display=(est==="tens")?"":"none";[renderCal,renderCalBox,renderRoster,renderCfg,renderAju,renderRes,renderNom,renderExtra].forEach(safe);}
+function refrescar(){MES=MES;ANIO=ANIO;actualizarBooks();const te=document.querySelector(".tab-extra");if(te)te.style.display=(est==="tens")?"":"none";[renderCal,renderCalBox,renderRoster,renderCfg,renderAju,renderRes,renderNom,renderExtra].forEach(safe);}
 // CALENDARIO
 function renderCal(){
-  const nd=diasMes(),y=+$("anio").value,m=+$("mes").value,tm=turnosMes(),pers=personas();
+  const nd=diasMes(),y=ANIO,m=MES,tm=turnosMes(),pers=personas();
   const exset=new Set(extraMes().map(x=>x.rut+"|"+x.dia));
   let h="<thead><tr><th class='name'>Personal</th>";
   for(let d=1;d<=nd;d++){const wd=new Date(y,m,d).getDay(),we=(wd===0||wd===6);h+=`<th class="${we?'we':''}">${d}<br>${DIASEM[wd]}</th>`;}
@@ -289,10 +290,10 @@ function renderCalBox(){const f=filas();const t={n12:0,n24:0,horas:0,sub:0,aj:0,
     <div class="cell"><div class="v">${t.horas}</div><div class="k">Horas totales</div></div>
     <div class="cell"><div class="v">${fmt(t.sub)}</div><div class="k">Subtotal turnos</div></div>
     <div class="cell"><div class="v ${t.aj<0?'neg':t.aj>0?'pos':''}">${fmt(t.aj)}</div><div class="k">Ajustes retraso</div></div>
-    <div class="cell main"><div class="v">${fmt(t.total)}</div><div class="k">TOTAL DEL MES · ${lib} · ${MESES[+$("mes").value]} ${$("anio").value} (exento)</div></div>`;}
+    <div class="cell main"><div class="v">${fmt(t.total)}</div><div class="k">TOTAL DEL MES · ${lib} · ${MESES[MES]} ${ANIO} (exento)</div></div>`;}
 function cycle(td){const pi=+td.dataset.pi,d=+td.dataset.d,p=personas()[pi],tm=turnosMes();tm[p.rut]=tm[p.rut]||{};const cur=tm[p.rut][d]||"",nxt=cur===""?"12":cur==="12"?"24":"";
   if(nxt==="")delete tm[p.rut][d];else tm[p.rut][d]=nxt;td.textContent=nxt;td.className="day "+(nxt==="12"?"v12":nxt==="24"?"v24":"");
-  if(nxt===""){const wd=new Date(+$("anio").value,+$("mes").value,d).getDay();if(wd===0||wd===6)td.classList.add("we");}
+  if(nxt===""){const wd=new Date(ANIO,MES,d).getDay();if(wd===0||wd===6)td.classList.add("we");}
   filaTot(pi);renderCalBox();persistir();flash();}
 function contar(rut){const r=turnosMes()[rut]||{};let n12=0,n24=0;Object.values(r).forEach(v=>{if(v==="12")n12++;else if(v==="24")n24++;});return{n12,n24};}
 function extraMes(){const k=mesKey();E().extra=E().extra||{};E().extra[k]=E().extra[k]||[];return E().extra[k];}
@@ -314,7 +315,7 @@ function recomputeDia(day){const rm=rosterMes(),r=rm[day]||{},tm=turnosMes();per
 function setRoster(day,turno,rut){const rm=rosterMes();rm[day]=rm[day]||{};if(rut)rm[day][turno]=rut;else delete rm[day][turno];if(!rm[day].d&&!rm[day].n)delete rm[day];
   recomputeDia(day);persistir();renderRoster();renderCal();renderRes();flash();}
 function renderRoster(){
-  const y=+$("anio").value,m=+$("mes").value,nd=diasMes(),rm=rosterMes();
+  const y=ANIO,m=MES,nd=diasMes(),rm=rosterMes();
   const hoy=new Date(),esMesActual=(y===hoy.getFullYear()&&m===hoy.getMonth()),diaHoy=hoy.getDate();
   if($("pautaTitulo"))$("pautaTitulo").textContent="📆 "+MESES[m]+" "+y+(esMesActual?" · (mes en curso)":"");
   const DOW=["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
@@ -367,7 +368,7 @@ function filas(){return personas().map(p=>{const c=contar(p.rut),ex=contarExtra(
 function renderRes(){const f=filas(),tot={n12:0,n24:0,horas:0,sub:0,aj:0,total:0,mutb:0,mutv:0,ex:0};
   f.forEach(x=>{tot.n12+=x.n12;tot.n24+=x.n24;tot.ex+=x.ex;tot.horas+=x.horas;tot.sub+=x.sub;tot.aj+=x.aj;tot.total+=x.total;tot.mutb+=mutBase(x.p.rut);tot.mutv+=mutValor(x.p.rut);});
   const lib=LIBROS.find(l=>l.slug===est).label;
-  $("kpis").innerHTML=`<div class="kpi"><div class="n">${fmt(tot.total)}</div><div class="l">Total a pagar · ${lib} · ${MESES[+$("mes").value]} ${$("anio").value} <span class="exento">exento</span></div></div>
+  $("kpis").innerHTML=`<div class="kpi"><div class="n">${fmt(tot.total)}</div><div class="l">Total a pagar · ${lib} · ${MESES[MES]} ${ANIO} <span class="exento">exento</span></div></div>
     <div class="kpi"><div class="n">${f.filter(x=>x.n12+x.n24>0).length}</div><div class="l">Personas con turnos</div></div>
     <div class="kpi"><div class="n">${tot.n12+tot.n24}</div><div class="l">Turnos (${tot.n12}×12h · ${tot.n24}×24h)</div></div>
     <div class="kpi"><div class="n ${tot.aj<0?'neg':'pos'}">${fmt(tot.aj)}</div><div class="l">Ajustes retraso</div></div>
@@ -380,7 +381,7 @@ function renderRes(){const f=filas(),tot={n12:0,n24:0,horas:0,sub:0,aj:0,total:0
   $("resfoot").innerHTML=`<tr><td>TOTALES</td><td class="num">${tot.n12}</td><td class="num">${tot.n24}</td><td class="num">${tot.horas}</td><td class="num">${tot.ex}</td><td class="num">${fmt(tot.sub)}</td><td class="num">${fmt(tot.aj)}</td><td class="num">${fmt(tot.total)}</td><td class="num">${fmt(tot.mutb)}</td><td class="num">${fmt(tot.mutv)}</td><td></td></tr>`;}
 function liquidacion(rut){const p=personas().find(x=>x.rut===rut),c=contar(rut),ex=contarExtra(rut),t=tarifa(rut),a=ajuste(rut),n12=c.n12+ex.e12,n24=c.n24+ex.e24;const sub=n12*(+t.v12||0)+n24*(+t.v24||0),aj=valorAjuste(rut),total=sub+aj;
   const ajTxt=(+a.cant||0)?`${a.cant} ${unidadTxt(a.unidad)}(s) × ${fmt(valorUnidad(rut,a.unidad,a.acc))} · ${a.acc==="suma"?"suma (extra)":"descuento (normal)"}`:"sin ajuste";
-  $("liq").innerHTML=`<div class="top"><h2>${p.nombre} ${p.apellido}</h2><div class="s">${p.cargo} · RUT ${p.rut} · ${MESES[+$("mes").value]} ${$("anio").value}</div></div>
+  $("liq").innerHTML=`<div class="top"><h2>${p.nombre} ${p.apellido}</h2><div class="s">${p.cargo} · RUT ${p.rut} · ${MESES[MES]} ${ANIO}</div></div>
     <div class="body"><div class="r"><span>Turnos 12h</span><span>${n12} × ${fmt(t.v12)} = ${fmt(n12*(+t.v12||0))}</span></div>
     <div class="r"><span>Turnos 24h</span><span>${n24} × ${fmt(t.v24)} = ${fmt(n24*(+t.v24||0))}</span></div>
     <div class="r"><span>Subtotal turnos</span><span>${fmt(sub)}</span></div>
@@ -395,7 +396,7 @@ function imprimirLiq(rut){const p=personas().find(x=>x.rut===rut),c=contar(rut),
   const ajTxt=(+a.cant||0)?`${a.cant} ${unidadTxt(a.unidad)}(s) × ${fmt(valorUnidad(rut,a.unidad,a.acc))} · ${a.acc==="suma"?"suma (extra)":"descuento (normal)"}`:"sin ajuste";
   const td='style="padding:8px;border:1px solid #ccc"',k='style="padding:8px;border:1px solid #ccc;background:#f1f5f9"';
   $("printArea").innerHTML=`<div style="font-family:Arial;max-width:620px;margin:0 auto;padding:30px"><h2 style="text-align:center">LIQUIDACIÓN DE TURNOS</h2>
-    <p style="text-align:center;color:#475569">${LIBROS.find(l=>l.slug===est).label} · ${MESES[+$("mes").value]} ${$("anio").value} · Folio L-${p.rut}</p>
+    <p style="text-align:center;color:#475569">${LIBROS.find(l=>l.slug===est).label} · ${MESES[MES]} ${ANIO} · Folio L-${p.rut}</p>
     <table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:14px">
     <tr><td ${k}><b>Nombre</b></td><td ${td}>${p.nombre} ${p.apellido}</td></tr><tr><td ${k}><b>RUT</b></td><td ${td}>${p.rut}</td></tr>
     <tr><td ${k}><b>Cargo</b></td><td ${td}>${p.cargo}</td></tr>
@@ -410,7 +411,7 @@ function imprimirLiq(rut){const p=personas().find(x=>x.rut===rut),c=contar(rut),
   window.print();setTimeout(()=>{$("printArea").innerHTML="";},500);}
 function imprimirNomina(){const f=filas().filter(x=>x.total!==0||x.n12+x.n24>0);let tot=0;
   const rows=f.map(x=>{tot+=x.total;return `<tr><td style="padding:6px;border:1px solid #ccc">${x.p.nombre} ${x.p.apellido}</td><td style="padding:6px;border:1px solid #ccc">${x.p.rut}</td><td style="padding:6px;border:1px solid #ccc">${x.p.banco||"—"} ${x.p.numCuenta||""}</td><td style="padding:6px;border:1px solid #ccc;text-align:right">${fmt(x.sub)}</td><td style="padding:6px;border:1px solid #ccc;text-align:right">${fmt(x.aj)}</td><td style="padding:6px;border:1px solid #ccc;text-align:right;font-weight:700">${fmt(x.total)}</td></tr>`;}).join("");
-  $("printArea").innerHTML=`<div style="font-family:Arial;padding:24px"><h2 style="text-align:center">NÓMINA DE PAGO — ${LIBROS.find(l=>l.slug===est).label} — ${MESES[+$("mes").value]} ${$("anio").value}</h2>
+  $("printArea").innerHTML=`<div style="font-family:Arial;padding:24px"><h2 style="text-align:center">NÓMINA DE PAGO — ${LIBROS.find(l=>l.slug===est).label} — ${MESES[MES]} ${ANIO}</h2>
     <p style="text-align:center;color:#475569">Servicios exentos</p><table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:12px">
     <tr style="background:#1e3a8a;color:#fff"><th style="padding:7px;text-align:left">Nombre</th><th style="padding:7px;text-align:left">RUT</th><th style="padding:7px;text-align:left">Banco/cuenta</th><th style="padding:7px;text-align:right">Subtotal</th><th style="padding:7px;text-align:right">Ajuste</th><th style="padding:7px;text-align:right">Total</th></tr>
     ${rows}<tr style="background:#eff6ff;font-weight:700"><td colspan="5" style="padding:8px;border:1px solid #ccc">TOTAL</td><td style="padding:8px;border:1px solid #ccc;text-align:right">${fmt(tot)}</td></tr></table></div>`;
@@ -433,7 +434,7 @@ function importarTurnosCSV(inp){const file=inp.files[0];if(!file)return;const rd
   const byRut={};TODOS.forEach(p=>byRut[normRut(p.rut)]=p);const mk=mesKey();let nP=0,nT=0,no=[];
   for(let li=hi+1;li<lines.length;li++){const c=lines[li].split(delim).map(s=>s.trim().replace(/^"|"$/g,""));const rut=normRut(c[rutIdx]);if(!rut)continue;const p=byRut[rut];if(!p){if(c[rutIdx])no.push(c[rutIdx]);continue;}
     const sl=SLUG[p.grupo];STORE[sl].turnos[mk]=STORE[sl].turnos[mk]||{};const reg={};let t=false;dayCols.forEach(o=>{const v=(c[o.i]||"").trim();if(v==="12"||v==="24"){reg[o.d]=v;nT++;t=true;}});STORE[sl].turnos[mk][p.rut]=reg;if(t)nP++;}
-  persistir();refrescar();flash();let m=`Importado a ${MESES[+$("mes").value]} ${$("anio").value}:\n${nP} personas · ${nT} turnos.`;if(no.length)m+=`\n\nRUT no encontrados: ${[...new Set(no)].join(", ")}`;alert(m);
+  persistir();refrescar();flash();let m=`Importado a ${MESES[MES]} ${ANIO}:\n${nP} personas · ${nT} turnos.`;if(no.length)m+=`\n\nRUT no encontrados: ${[...new Set(no)].join(", ")}`;alert(m);
   }catch(err){alert("No se pudo leer el archivo (guárdalo como CSV).\n"+err);}inp.value="";};rd.readAsText(file,"UTF-8");}
 // NÓMINA
 function normGrupo(s){s=(s||"").toString().toUpperCase();if(/MED|MÉD/.test(s))return "MÉDICO";if(/TENS/.test(s))return "TENS";if(/EU|ENFERM/.test(s))return "EU";return s.trim()||"EU";}
@@ -487,7 +488,7 @@ function buildPDF(rut){const p=personas().find(x=>x.rut===rut),c=contar(rut),ex=
   const ajTxt=(+a.cant||0)?`${a.cant} ${unidadTxt(a.unidad)}(s) × ${fmt(valorUnidad(rut,a.unidad,a.acc))} · ${a.acc==="suma"?"suma (extra)":"descuento (normal)"}`:"sin ajuste";
   const lib=LIBROS.find(l=>l.slug===est).label;const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:"mm",format:"a4"});let y=18;
   doc.setFillColor(30,58,138);doc.rect(0,0,210,16,"F");doc.setTextColor(255);doc.setFontSize(14);doc.setFont(undefined,"bold");doc.text("LIQUIDACIÓN DE TURNOS",105,10,{align:"center"});
-  doc.setTextColor(30,41,59);y=26;doc.setFontSize(11);doc.setFont(undefined,"normal");doc.text(`${lib}  ·  ${MESES[+$("mes").value]} ${$("anio").value}  ·  Folio L-${p.rut}`,105,y,{align:"center"});y+=10;
+  doc.setTextColor(30,41,59);y=26;doc.setFontSize(11);doc.setFont(undefined,"normal");doc.text(`${lib}  ·  ${MESES[MES]} ${ANIO}  ·  Folio L-${p.rut}`,105,y,{align:"center"});y+=10;
   const fila=(k,v)=>{doc.setFont(undefined,"bold");doc.setFillColor(241,245,249);doc.rect(20,y-5,60,8,"F");doc.text(k,22,y);doc.setFont(undefined,"normal");doc.text(String(v),84,y);y+=9;};
   fila("Nombre",`${p.nombre} ${p.apellido}`);fila("RUT",p.rut);fila("Cargo",p.cargo);
   fila("Turnos 12h",`${n12} × ${fmt(t.v12)} = ${fmt(n12*(+t.v12||0))}`);fila("Turnos 24h",`${n24} × ${fmt(t.v24)} = ${fmt(n24*(+t.v24||0))}`);
@@ -499,15 +500,15 @@ function buildPDF(rut){const p=personas().find(x=>x.rut===rut),c=contar(rut),ex=
 function pdfNombre(rut){return `Liquidacion_${buildPDF(rut).nombre}_${mesKey()}.pdf`;}
 function descargarPDF(rut){const {doc}=buildPDF(rut);doc.save(pdfNombre(rut));}
 async function compartirPDF(rut){const {doc,p,total}=buildPDF(rut);const fname=pdfNombre(rut);const blob=doc.output("blob");const file=new File([blob],fname,{type:"application/pdf"});
-  const texto=`Liquidación ${p.nombre} ${p.apellido} · ${MESES[+$("mes").value]} ${$("anio").value} · Total: ${fmt(total)} (exento)`;
+  const texto=`Liquidación ${p.nombre} ${p.apellido} · ${MESES[MES]} ${ANIO} · Total: ${fmt(total)} (exento)`;
   if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:"Liquidación",text:texto});return;}catch(e){if(e.name==="AbortError")return;}}
   doc.save(fname);mostrarCompartir(rut,texto);}
 function mostrarCompartir(rut,texto){const p=personas().find(x=>x.rut===rut);const tel=(p.telefono||"").replace(/\D/g,"");const wa=tel?`https://wa.me/56${tel.replace(/^56/,"")}?text=${encodeURIComponent(texto)}`:`https://wa.me/?text=${encodeURIComponent(texto)}`;const mail=`mailto:${p.email||""}?subject=${encodeURIComponent("Liquidación "+p.nombre)}&body=${encodeURIComponent(texto+"\n\n(Adjunta el PDF descargado)")}`;
   $("liq").innerHTML=`<div class="top"><h2>Compartir liquidación</h2><div class="s">${p.nombre} ${p.apellido}</div></div><div class="body"><p class="legend">El PDF se descargó. Compártelo:</p><div style="display:flex;flex-direction:column;gap:8px"><a href="${wa}" target="_blank" style="text-decoration:none"><button class="b-ok" style="width:100%">🟢 WhatsApp${tel?" ("+p.telefono+")":""}</button></a><a href="${mail}" style="text-decoration:none"><button class="b-primary" style="width:100%">✉️ Correo${p.email?" ("+p.email+")":""}</button></a><button class="b-ghost" onclick="descargarPDF('${rut}')">⬇️ Descargar PDF otra vez</button></div><p class="legend" style="margin-top:10px">En computador adjunta el PDF descargado manualmente. En celular el botón Compartir envía el PDF directo.</p></div><div class="foot"><button class="b-ghost" onclick="cerrar()">Cerrar</button></div>`;$("modal").classList.add("show");}
 function guardar(){persistir();flash();}
 function flash(){const m=$("saveMsg");m.textContent="✓ Guardado";clearTimeout(window._s);window._s=setTimeout(()=>m.textContent="",1500);}
-function limpiarMes(){if(!confirm("¿Borrar el CALENDARIO (turnos, ajustes y mutualidad) de "+LIBROS.find(l=>l.slug===est).label+" en "+MESES[+$("mes").value]+" "+$("anio").value+"? La pauta y las tarifas se conservan."))return;delete E().turnos[mesKey()];delete E().ajustes[mesKey()];if(E().mut)delete E().mut[mesKey()];if(E().extra)delete E().extra[mesKey()];persistir();refrescar();}
-function limpiarPauta(){if(!confirm("¿Borrar toda la PAUTA día/noche de "+MESES[+$("mes").value]+" "+$("anio").value+"? (No modifica el Calendario ya generado.)"))return;if(E().roster)delete E().roster[mesKey()];persistir();renderRoster();flash();}
+function limpiarMes(){if(!confirm("¿Borrar el CALENDARIO (turnos, ajustes y mutualidad) de "+LIBROS.find(l=>l.slug===est).label+" en "+MESES[MES]+" "+ANIO+"? La pauta y las tarifas se conservan."))return;delete E().turnos[mesKey()];delete E().ajustes[mesKey()];if(E().mut)delete E().mut[mesKey()];if(E().extra)delete E().extra[mesKey()];persistir();refrescar();}
+function limpiarPauta(){if(!confirm("¿Borrar toda la PAUTA día/noche de "+MESES[MES]+" "+ANIO+"? (No modifica el Calendario ya generado.)"))return;if(E().roster)delete E().roster[mesKey()];persistir();renderRoster();flash();}
 /* Auto-limpieza de versiones viejas: quita cualquier service worker y borra cachés, para cargar siempre lo último */
 if("serviceWorker" in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister())).catch(()=>{});}
 if(window.caches){caches.keys().then(ks=>ks.forEach(k=>caches.delete(k))).catch(()=>{});}
