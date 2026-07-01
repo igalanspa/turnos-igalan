@@ -109,7 +109,7 @@
 <body>
 <header>
   <h1>Sistema de Turnos · Enfermeras (EU)</h1>
-  <p>Tres libros (Médicos, TENS, EU), turnos 12/24h, pauta día/noche, ajustes, mutualidad, nube y PDF. Exento. · versión v12</p>
+  <p>Tres libros (Médicos, TENS, EU), turnos 12/24h, pauta día/noche, ajustes, mutualidad, nube y PDF. Exento. · versión v13</p>
 </header>
 <div class="books no-print" id="books" style="display:none"></div>
 <div class="topbar no-print">
@@ -242,7 +242,7 @@ function arr2obj(a){const o={};a.forEach((v,i)=>{if(v!==null&&v!==undefined&&v!=
 function normalizarStore(s){try{LIBROS.forEach(l=>{const e=s[l.slug];if(!e)return;["turnos","ajustes","mut","roster"].forEach(k=>{const nodo=e[k]||{};Object.keys(nodo).forEach(mk=>{let mm=nodo[mk];if(Array.isArray(mm))mm=nodo[mk]=arr2obj(mm);if(mm&&typeof mm==="object")Object.keys(mm).forEach(rut=>{if(Array.isArray(mm[rut]))mm[rut]=arr2obj(mm[rut]);});});});const ex=e.extra||{};Object.keys(ex).forEach(mk=>{if(!Array.isArray(ex[mk]))ex[mk]=(ex[mk]&&typeof ex[mk]==="object")?Object.values(ex[mk]):[];});});}catch(e){console.warn("norm",e);}}
 const MUT_PCT=0.0093, BASE_HORA=29167;
 function persistir(){localStorage.setItem(KEY,JSON.stringify(STORE));cloudPush();}
-function E(){return STORE[est];}
+function E(){var e=STORE[est]=STORE[est]||{};e.tarifas=e.tarifas||{};e.turnos=e.turnos||{};e.ajustes=e.ajustes||{};e.mut=e.mut||{};e.roster=e.roster||{};e.extra=e.extra||{};e.sueldos=e.sueldos||{};return e;}
 function personas(){const g=LIBROS.find(l=>l.slug===est).grupo;return TODOS.filter(p=>p.grupo===g);}
 (function init(){
   $("books").innerHTML=LIBROS.map(l=>`<div class="book ${l.slug} ${l.slug===est?'active':''}" onclick="cambiarLibro('${l.slug}')">${l.label} (${TODOS.filter(p=>p.grupo===l.grupo).length})</div>`).join("");
