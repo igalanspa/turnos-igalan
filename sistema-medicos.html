@@ -115,7 +115,7 @@
 <div class="topbar no-print">
   <div><label>Mes</label><select id="mes"></select> <select id="anio"></select></div>
   <button class="b-ghost" onclick="guardar()">💾 Guardar</button>
-  <button class="b-ghost" onclick="limpiarMes()">🗑 Limpiar mes</button>
+  <button class="b-ghost" onclick="limpiarMes()">🗑 Limpiar Calendario (mes)</button>
   <button class="b-ghost" onclick="exportarBackup()">⬇ Respaldo</button>
   <label style="cursor:pointer;background:var(--ok);color:#fff;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:600">📥 Importar turnos (CSV)<input type="file" id="impcsv" accept=".csv,.txt" style="display:none" onchange="importarTurnosCSV(this)"></label>
   <label style="cursor:pointer">⬆ Restaurar respaldo<input type="file" id="imp" accept=".json" style="display:none" onchange="importarBackup(this)"></label>
@@ -139,6 +139,7 @@
   <section id="roster">
     <p class="legend">Pauta (respeta año/mes de arriba): elige la persona de <b>Día</b> y <b>Noche</b> en cada día. Día+Noche=24h. <b>Completa el Calendario 1</b> automáticamente (misma persona día y noche = 24h; distintas = 12h c/u).</p>
     <div id="pautaTitulo" style="font-weight:800;color:var(--azul-osc);font-size:16px;margin:2px 0 10px"></div>
+    <div class="no-print" style="margin:0 0 10px"><button class="b-primary" onclick="aplicarPautaTodo()">⤵ Aplicar pauta al Calendario 1</button> <button class="b-ghost" onclick="limpiarPauta()">🗑 Limpiar pauta</button> <span class="legend" style="margin-left:8px">Genera los turnos 12/24h en el Calendario según esta pauta. Luego puedes corregir el Calendario a mano.</span></div>
     <div class="pauta-alert" id="pautaAlert"></div>
     <div class="pautawrap" id="pautabody"></div>
   </section>
@@ -251,7 +252,8 @@ function tab(id,el){document.querySelectorAll("section").forEach(s=>s.classList.
   if(id==="cal")renderCal();if(id==="res")renderRes();if(id==="cfg")renderCfg();if(id==="aju")renderAju();if(id==="nom")renderNom();if(id==="roster")renderRoster();}
 function actualizarBooks(){$("books").innerHTML=LIBROS.map(l=>`<div class="book ${l.slug} ${l.slug===est?'active':''}" onclick="cambiarLibro('${l.slug}')">${l.label} (${TODOS.filter(p=>p.grupo===l.grupo).length})</div>`).join("");}
 function aplicarRosterMes(){const rm=rosterMes();Object.keys(rm).forEach(d=>recomputeDia(+d));}
-function refrescar(){actualizarBooks();aplicarRosterMes();renderCal();renderRoster();renderCfg();renderAju();renderRes();renderNom();}
+function aplicarPautaTodo(){aplicarRosterMes();persistir();renderCal();renderRes();renderCalBox();flash();alert("Pauta aplicada al Calendario 1. Ahora puedes ajustar el Calendario a mano si lo necesitas.");}
+function refrescar(){actualizarBooks();renderCal();renderRoster();renderCfg();renderAju();renderRes();renderNom();}
 // CALENDARIO
 function renderCal(){
   const nd=diasMes(),y=+$("anio").value,m=+$("mes").value,tm=turnosMes(),pers=personas();
@@ -478,7 +480,8 @@ function mostrarCompartir(rut,texto){const p=personas().find(x=>x.rut===rut);con
   $("liq").innerHTML=`<div class="top"><h2>Compartir liquidación</h2><div class="s">${p.nombre} ${p.apellido}</div></div><div class="body"><p class="legend">El PDF se descargó. Compártelo:</p><div style="display:flex;flex-direction:column;gap:8px"><a href="${wa}" target="_blank" style="text-decoration:none"><button class="b-ok" style="width:100%">🟢 WhatsApp${tel?" ("+p.telefono+")":""}</button></a><a href="${mail}" style="text-decoration:none"><button class="b-primary" style="width:100%">✉️ Correo${p.email?" ("+p.email+")":""}</button></a><button class="b-ghost" onclick="descargarPDF('${rut}')">⬇️ Descargar PDF otra vez</button></div><p class="legend" style="margin-top:10px">En computador adjunta el PDF descargado manualmente. En celular el botón Compartir envía el PDF directo.</p></div><div class="foot"><button class="b-ghost" onclick="cerrar()">Cerrar</button></div>`;$("modal").classList.add("show");}
 function guardar(){persistir();flash();}
 function flash(){const m=$("saveMsg");m.textContent="✓ Guardado";clearTimeout(window._s);window._s=setTimeout(()=>m.textContent="",1500);}
-function limpiarMes(){if(!confirm("¿Borrar turnos, ajustes, mutualidad y pauta de "+LIBROS.find(l=>l.slug===est).label+" en "+MESES[+$("mes").value]+" "+$("anio").value+"? (Tarifas se conservan)"))return;delete E().turnos[mesKey()];delete E().ajustes[mesKey()];if(E().mut)delete E().mut[mesKey()];if(E().roster)delete E().roster[mesKey()];persistir();refrescar();}
+function limpiarMes(){if(!confirm("¿Borrar el CALENDARIO (turnos, ajustes y mutualidad) de "+LIBROS.find(l=>l.slug===est).label+" en "+MESES[+$("mes").value]+" "+$("anio").value+"? La pauta y las tarifas se conservan."))return;delete E().turnos[mesKey()];delete E().ajustes[mesKey()];if(E().mut)delete E().mut[mesKey()];persistir();refrescar();}
+function limpiarPauta(){if(!confirm("¿Borrar toda la PAUTA día/noche de "+MESES[+$("mes").value]+" "+$("anio").value+"? (No modifica el Calendario ya generado.)"))return;if(E().roster)delete E().roster[mesKey()];persistir();renderRoster();flash();}
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}
 initNube();refrescar();
 </script>
