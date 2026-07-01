@@ -109,7 +109,7 @@
 <body>
 <header>
   <h1>Sistema de Turnos · Enfermeras (EU)</h1>
-  <p>Tres libros (Médicos, TENS, EU), turnos 12/24h, pauta día/noche, ajustes, mutualidad, nube y PDF. Exento. · versión v4</p>
+  <p>Tres libros (Médicos, TENS, EU), turnos 12/24h, pauta día/noche, ajustes, mutualidad, nube y PDF. Exento. · versión v5</p>
 </header>
 <div class="books no-print" id="books" style="display:none"></div>
 <div class="topbar no-print">
@@ -273,7 +273,7 @@ let mesAuto=false,userMes=false;
 function mesesConDatos(){const set=new Set();["turnos","roster","ajustes","extra"].forEach(k=>{const o=(E()[k])||{};Object.keys(o).forEach(mk=>{const v=o[mk];const has=(k==="extra")?(Array.isArray(v)&&v.length):(v&&Object.keys(v).length);if(has)set.add(mk);});});return [...set].sort();}
 function autoMes(){if(mesAuto||userMes)return;const arr=mesesConDatos();if(!arr.length)return;const mk=mesKey();if(!arr.includes(mk)){const last=arr[arr.length-1].split("-");$("anio").value=+last[0];$("mes").value=(+last[1]-1);ANIO=+last[0];MES=(+last[1]-1);}mesAuto=true;}
 function safe(f){try{f();}catch(e){console.warn("render",e);}}
-function refrescar(){MES=MES;ANIO=ANIO;actualizarBooks();const te=document.querySelector(".tab-extra");if(te)te.style.display=(est==="tens")?"":"none";[renderCal,renderCalBox,renderRoster,renderCfg,renderAju,renderRes,renderNom,renderExtra].forEach(safe);}
+function refrescar(){MES=+$("mes").value;ANIO=+$("anio").value;actualizarBooks();const te=document.querySelector(".tab-extra");if(te)te.style.display=(est==="tens")?"":"none";[renderCal,renderCalBox,renderRoster,renderCfg,renderAju,renderRes,renderNom,renderExtra].forEach(safe);}
 // CALENDARIO
 function renderCal(){
   const nd=diasMes(),y=ANIO,m=MES,tm=turnosMes(),pers=personas();
