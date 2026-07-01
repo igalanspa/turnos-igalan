@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Turnos TENS · IGALAN</title>
+<meta name="theme-color" content="#1e3a8a">
+<link rel="manifest" href="manifest-tens.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Turnos IGALAN">
+<style>
+  :root{--azul:#1d4ed8;--azul-osc:#1e3a8a;--gris:#475569;--gris-cl:#f1f5f9;--borde:#cbd5e1;--bg:#f8fafc;
+    --c12:#2563eb;--c24:#d97706;--eu:#3b82f6;--tens:#16a34a;--med:#d97706;--ok:#16a34a;--err:#dc2626;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);color:#0f172a;}
+  header{background:linear-gradient(135deg,var(--azul-osc),var(--azul));color:#fff;padding:16px 26px;}
+  header h1{margin:0;font-size:20px;} header p{margin:4px 0 0;font-size:12.5px;opacity:.85;}
+  .books{display:flex;gap:8px;background:#0f1f3d;padding:8px 26px;}
+  .book{padding:8px 16px;border-radius:8px;cursor:pointer;font-weight:700;font-size:13px;color:#cbd5e1;background:rgba(255,255,255,.06);}
+  .book.active{color:#fff;} .book.medicos.active{background:var(--med);} .book.tens.active{background:var(--tens);} .book.eu.active{background:var(--eu);}
+  .topbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:#fff;border-bottom:1px solid var(--borde);padding:10px 26px;}
+  .topbar label{font-size:12px;font-weight:600;color:var(--gris);margin-right:6px;}
+  input,select{padding:8px 10px;border:1px solid var(--borde);border-radius:7px;font-size:13px;font-family:inherit;}
+  .tabs{display:flex;gap:4px;padding:0 26px;background:#fff;border-bottom:1px solid var(--borde);flex-wrap:wrap;}
+  .tab{padding:11px 15px;cursor:pointer;font-weight:600;font-size:13px;color:var(--gris);border-bottom:3px solid transparent;}
+  .tab.active{color:var(--azul-osc);border-bottom-color:var(--azul);}
+  .wrap{padding:18px 26px;} section{display:none;} section.active{display:block;}
+  button{cursor:pointer;border:none;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:600;}
+  .b-primary{background:var(--azul);color:#fff;} .b-ghost{background:#e2e8f0;color:var(--azul-osc);} .b-ok{background:var(--ok);color:#fff;}
+  .legend{font-size:12px;color:var(--gris);margin:0 0 10px;}
+  .pill{display:inline-block;padding:2px 9px;border-radius:6px;color:#fff;font-weight:700;font-size:11px;}
+  .pill.t12{background:var(--c12);} .pill.t24{background:var(--c24);}
+  .chip{display:inline-block;padding:1px 7px;border-radius:20px;font-size:9.5px;font-weight:700;color:#fff;}
+  .chip.EU{background:var(--eu);} .chip.TENS{background:var(--tens);} .chip.MÉDICO{background:var(--med);}
+  .calwrap{overflow:auto;border:1px solid var(--borde);border-radius:10px;background:#fff;max-height:70vh;}
+  table.cal{border-collapse:collapse;font-size:11px;}
+  table.cal th,table.cal td{border:1px solid #e7ebf0;text-align:center;}
+  table.cal thead th{position:sticky;top:0;background:var(--azul-osc);color:#fff;z-index:3;padding:4px 2px;font-size:10px;}
+  table.cal th.name,table.cal td.name{position:sticky;left:0;background:#fff;z-index:2;text-align:left;padding:5px 8px;min-width:165px;white-space:nowrap;box-shadow:2px 0 4px -2px rgba(0,0,0,.12);}
+  table.cal thead th.name{z-index:4;background:var(--azul-osc);}
+  table.cal th.tot,table.cal td.tot{position:sticky;right:0;background:#f8fafc;z-index:2;min-width:74px;font-weight:600;}
+  table.cal thead th.tot{background:var(--azul-osc);}
+  td.day{width:26px;height:26px;cursor:pointer;font-weight:700;}
+  td.day.we{background:#f1f5f9;} td.day.v12{background:var(--c12);color:#fff;} td.day.v24{background:var(--c24);color:#fff;}
+  td.day:hover{outline:2px solid var(--azul);outline-offset:-2px;}
+  .montotot{color:var(--azul-osc);font-weight:700;}
+  .totalbox{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 12px;}
+  .totalbox .cell{flex:1;min-width:120px;background:#fff;border:1px solid var(--borde);border-radius:10px;padding:10px 14px;}
+  .totalbox .cell.main{background:var(--azul-osc);border-color:var(--azul-osc);color:#fff;}
+  .totalbox .cell .v{font-size:20px;font-weight:800;color:var(--azul-osc);} .totalbox .cell.main .v{color:#fff;}
+  .totalbox .cell .k{font-size:11px;color:var(--gris);margin-top:2px;} .totalbox .cell.main .k{color:#cbd5e1;}
+  /* pauta */
+  .pautawrap{overflow:auto;}
+  table.pauta{width:100%;border-collapse:collapse;margin-bottom:14px;background:#fff;border:1px solid var(--borde);border-radius:8px;overflow:hidden;font-size:12px;}
+  table.pauta th,table.pauta td{border:1px solid #e7ebf0;padding:3px;text-align:center;}
+  table.pauta thead th{background:#cbd5e1;color:#0f172a;font-weight:700;font-size:11px;padding:6px 4px;}
+  table.pauta th.lbl,table.pauta td.lbl{background:#dbe2ea;font-weight:700;width:60px;}
+  table.pauta td.has{background:#fbfbe8;} table.pauta td.falta{background:#fee2e2;} table.pauta td.empty{background:#f8fafc;}
+  table.pauta select{width:100%;min-width:118px;border:none;background:transparent;font-size:12px;padding:4px;cursor:pointer;}
+  table.pauta td.falta select{color:#b91c1c;font-weight:700;}
+  table.pauta thead th.we{background:#94a3b8;color:#fff;}
+  table.pauta td.wecol{background:#eef2f7;}
+  table.pauta thead th.hoy{background:#1d4ed8;color:#fff;box-shadow:inset 0 0 0 2px #fff;}
+  /* calendario mensual real */
+  table.calmes{width:100%;border-collapse:collapse;table-layout:fixed;background:#fff;border:1px solid var(--borde);border-radius:8px;overflow:hidden;}
+  table.calmes th{background:var(--azul-osc);color:#fff;font-size:11px;padding:6px;text-align:center;}
+  table.calmes th.we{background:#334155;}
+  table.calmes td{border:1px solid #e7ebf0;vertical-align:top;height:84px;padding:3px;width:14.28%;}
+  table.calmes td.empty{background:#f8fafc;}
+  td.diacel .dnum{font-weight:700;font-size:12px;color:#0f172a;margin-bottom:2px;}
+  td.diacel.wecol{background:#f1f5f9;}
+  td.diacel.hoy{outline:2px solid #1d4ed8;outline-offset:-2px;}
+  td.diacel.falta{background:#fee2e2;}
+  .dnsel .row{display:flex;align-items:center;gap:3px;margin-top:2px;}
+  .dnsel .tag{font-size:9px;font-weight:800;width:12px;color:var(--gris);}
+  .dnsel .tag.n{color:var(--c24);} .dnsel .tag.d{color:var(--c12);}
+  .dnsel select{width:100%;font-size:10.5px;padding:2px;border:1px solid var(--borde);border-radius:4px;background:#fff;}
+
+  .pauta-alert{display:none;background:#fee2e2;border:1px solid #fecaca;color:#991b1b;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;}
+  table.cfg{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  table.cfg th{background:var(--azul-osc);color:#fff;font-size:12px;padding:9px;text-align:left;}
+  table.cfg td{padding:7px 9px;border-bottom:1px solid #eef2f7;font-size:12.5px;}
+  table.cfg input{width:110px;text-align:right;} table.cfg select{padding:6px 8px;}
+  .quickfill{background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px 16px;margin-bottom:16px;}
+  .quickfill .row{display:flex;gap:10px;align-items:end;flex-wrap:wrap;}
+  .quickfill .row>div label{display:block;font-size:11.5px;font-weight:600;color:var(--gris);margin-bottom:3px;}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-bottom:18px;}
+  .kpi{background:#fff;border:1px solid var(--borde);border-radius:12px;padding:14px 16px;}
+  .kpi .n{font-size:22px;font-weight:700;color:var(--azul-osc);} .kpi .l{font-size:11.5px;color:var(--gris);}
+  table.res{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  table.res th{background:var(--azul-osc);color:#fff;font-size:11.5px;padding:8px;text-align:left;}
+  table.res td{padding:7px 8px;border-bottom:1px solid #eef2f7;font-size:12px;}
+  table.res td.num{text-align:right;} .neg{color:var(--err);} .pos{color:var(--ok);}
+  table.res tfoot td{font-weight:700;background:#eff6ff;border-top:2px solid var(--azul);}
+  .modal{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;padding:20px;z-index:50;}
+  .modal.show{display:flex;}
+  .liq{background:#fff;border-radius:14px;max-width:470px;width:100%;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.3);}
+  .liq .top{background:var(--azul-osc);color:#fff;padding:18px 22px;} .liq .top h2{margin:0;font-size:18px;} .liq .top .s{opacity:.9;font-size:12.5px;margin-top:2px;}
+  .liq .body{padding:14px 22px;} .liq .body .r{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eef2f7;font-size:13.5px;}
+  .liq .body .r.big{font-size:17px;font-weight:700;color:var(--azul-osc);border-bottom:none;padding-top:14px;}
+  .liq .foot{padding:12px 22px;background:var(--gris-cl);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;}
+  .exento{display:inline-block;background:#fef9c3;color:#854d0e;padding:1px 7px;border-radius:5px;font-size:10.5px;font-weight:700;}
+  @media print{body{background:#fff;} header,.topbar,.books,.tabs,.no-print,.modal .foot{display:none!important;}
+    .modal{position:static;background:none;display:block;padding:0;} .liq{box-shadow:none;max-width:100%;} #printArea{display:block!important;}}
+  #printArea{display:none;}
+</style>
+</head>
+<body>
+<header>
+  <h1>Sistema de Turnos · TENS</h1>
+  <p>Tres libros (Médicos, TENS, EU), turnos 12/24h, pauta día/noche, ajustes, mutualidad, nube y PDF. Exento.</p>
+</header>
+<div class="books no-print" id="books" style="display:none"></div>
+<div class="topbar no-print">
+  <div><label>Mes</label><select id="mes"></select> <select id="anio"></select></div>
+  <button class="b-ghost" onclick="guardar()">💾 Guardar</button>
+  <button class="b-ghost" onclick="limpiarMes()">🗑 Limpiar mes</button>
+  <button class="b-ghost" onclick="exportarBackup()">⬇ Respaldo</button>
+  <label style="cursor:pointer;background:var(--ok);color:#fff;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:600">📥 Importar turnos (CSV)<input type="file" id="impcsv" accept=".csv,.txt" style="display:none" onchange="importarTurnosCSV(this)"></label>
+  <label style="cursor:pointer">⬆ Restaurar respaldo<input type="file" id="imp" accept=".json" style="display:none" onchange="importarBackup(this)"></label>
+  <button class="b-ghost" onclick="abrirNube()"><span id="nubeIco">☁️</span> Nube: <b id="nubeEstado">local</b></button>
+  <span id="saveMsg" style="font-size:12px;color:var(--ok);font-weight:600"></span>
+</div>
+<div class="tabs no-print">
+  <div class="tab active" onclick="tab('cal',this)">📅 Calendario</div>
+  <div class="tab" onclick="tab('roster',this)">📆 Pauta día/noche</div>
+  <div class="tab" onclick="tab('cfg',this)">💲 Tarifas</div>
+  <div class="tab" onclick="tab('aju',this)">⏱ Ajustes por retraso</div>
+  <div class="tab" onclick="tab('res',this)">📊 Resumen de pagos</div>
+  <div class="tab" onclick="tab('nom',this)">👥 Nómina</div>
+</div>
+<div class="wrap">
+  <section id="cal" class="active">
+    <p class="legend">Clic en cada día: vacío → <span class="pill t12">12h</span> → <span class="pill t24">24h</span> → vacío.</p>
+    <div class="totalbox" id="calbox"></div>
+    <div class="calwrap"><table class="cal" id="caltbl"></table></div>
+  </section>
+  <section id="roster">
+    <p class="legend">Pauta (respeta año/mes de arriba): elige la persona de <b>Día</b> y <b>Noche</b> en cada día. Día+Noche=24h. <b>Completa el Calendario 1</b> automáticamente (misma persona día y noche = 24h; distintas = 12h c/u).</p>
+    <div id="pautaTitulo" style="font-weight:800;color:var(--azul-osc);font-size:16px;margin:2px 0 10px"></div>
+    <div class="pauta-alert" id="pautaAlert"></div>
+    <div class="pautawrap" id="pautabody"></div>
+  </section>
+  <section id="cfg">
+    <div class="quickfill no-print" id="cfgServicio">
+      <div style="font-weight:700;color:var(--azul-osc);margin-bottom:8px" id="cfgTitulo">Valores del servicio</div>
+      <div class="row">
+        <div><label>Valor turno 12h</label><input type="number" id="qf12" min="0" placeholder="0"></div>
+        <div><label>Valor turno 24h</label><input type="number" id="qf24" min="0" placeholder="0"></div>
+        <div><label>Valor hora normal</label><input type="number" id="qfvh" min="0" placeholder="29167"></div>
+        <div><label>Valor hora extra</label><input type="number" id="qfvhe" min="0" placeholder="29167"></div>
+        <div><button class="b-primary" onclick="aplicarRapido()">Aplicar a este servicio</button></div>
+      </div>
+      <p class="legend" style="margin:8px 0 0">Se guardan <b>solo en el servicio seleccionado</b>. Al <b>descontar</b> se usa el valor hora normal; al <b>sumar</b>, el extra.</p>
+    </div>
+    <table class="cfg"><thead><tr><th>Nombre</th><th>Valor turno 12h</th><th>Valor turno 24h</th><th>Valor hora normal</th><th>Valor hora extra</th></tr></thead><tbody id="cfgbody"></tbody></table>
+  </section>
+  <section id="aju">
+    <p class="legend">Ajuste mensual por persona: elige unidad (Hora/Minuto) y cantidad; el valor se calcula con el valor hora del servicio (Hora=base; Minuto=base÷60), sumando o descontando.</p>
+    <table class="cfg"><thead><tr><th>Nombre</th><th>Unidad</th><th>Cantidad</th><th>Acción</th><th>Valor hora aplicado</th><th>Valor del ajuste</th></tr></thead><tbody id="ajubody"></tbody></table>
+  </section>
+  <section id="res">
+    <div class="kpis" id="kpis"></div>
+    <div class="no-print" style="margin-bottom:12px">
+      <button class="b-ok" onclick="exportarCSV()">⬇ Exportar a Excel (CSV)</button>
+      <button class="b-ghost" onclick="imprimirNomina()">🖨 Imprimir nómina de pago</button>
+    </div>
+    <table class="res"><thead><tr><th>Nombre</th><th class="num">T12</th><th class="num">T24</th><th class="num">Horas</th><th class="num">Subtotal turnos</th><th class="num">Ajuste retraso</th><th class="num">Total a pagar</th><th class="num">Base mutualidad</th><th class="num">Mutualidad 0,93%</th><th></th></tr></thead><tbody id="resbody"></tbody><tfoot id="resfoot"></tfoot></table>
+  </section>
+  <section id="nom">
+    <p class="legend">Carga o actualiza la nómina: importa desde <b>Excel</b> (.xlsx/CSV) o <b>imagen</b> (OCR, con revisión), o agrega a mano.</p>
+    <div class="quickfill no-print" style="background:#f0fdf4;border-color:#bbf7d0">
+      <div class="row">
+        <div><label>Importar Excel (.xlsx/.csv)</label><label style="cursor:pointer;background:var(--ok);color:#fff;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:600;display:inline-block">📊 Elegir archivo<input type="file" id="nomXls" accept=".xlsx,.xls,.csv" style="display:none" onchange="importarNominaArchivo(this)"></label></div>
+        <div><label>Importar imagen (OCR)</label><label style="cursor:pointer;background:#7c3aed;color:#fff;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:600;display:inline-block">🖼️ Elegir imagen<input type="file" id="nomImg" accept="image/*" style="display:none" onchange="importarNominaImagen(this)"></label></div>
+        <div><button class="b-ghost" onclick="agregarPersonaManual()">＋ Agregar persona</button></div>
+        <div><button class="b-ghost" onclick="restaurarNomina()">↺ Restaurar nómina original</button></div>
+      </div>
+      <p class="legend" id="nomMsg" style="margin:8px 0 0">Columnas Excel: RUT, Nombre, Apellido, Cargo (EU/TENS/MÉDICO), Teléfono, Banco, Tipo cuenta, N° cuenta, Email.</p>
+    </div>
+    <table class="cfg"><thead><tr><th>RUT</th><th>Nombre</th><th>Apellido</th><th>Cargo</th><th>Teléfono</th><th>Banco</th><th>N° cuenta</th><th>Email</th><th></th></tr></thead><tbody id="nombody"></tbody></table>
+  </section>
+</div>
+<div class="modal" id="modal" onclick="if(event.target===this)cerrar()"><div class="liq" id="liq"></div></div>
+<div class="modal no-print" id="nubeModal" onclick="if(event.target===this)$('nubeModal').classList.remove('show')">
+  <div class="liq" style="max-width:560px">
+    <div class="top"><h2>☁️ Sincronización en la nube</h2><div class="s">Conecta a Firebase para compartir datos en tiempo real.</div></div>
+    <div class="body"><p class="legend" id="nubeInfo" style="margin-top:0">Estado: <b>sin conectar</b>.</p>
+      <label style="font-size:12px;font-weight:600;color:var(--gris)">Configuración de Firebase (JSON):</label>
+      <textarea id="nubeCfg" style="width:100%;height:140px;font-family:monospace;font-size:12px;border:1px solid var(--borde);border-radius:8px;padding:10px" placeholder='{"databaseURL":"https://tu-proyecto-default-rtdb.firebaseio.com"}'></textarea></div>
+    <div class="foot"><button class="b-ghost" onclick="desconectarNube()">Desconectar</button><button class="b-ghost" onclick="$('nubeModal').classList.remove('show')">Cerrar</button><button class="b-primary" onclick="conectarNubeDesdeUI()">Conectar</button></div>
+  </div>
+</div>
+<div class="modal" id="revModal" onclick="if(event.target===this)cerrarRev()">
+  <div class="liq" style="max-width:760px">
+    <div class="top"><h2>Revisar nómina importada</h2><div class="s">Una persona por línea: RUT, Nombre, Apellido, Cargo, Teléfono, Banco, Tipo cuenta, N° cuenta, Email</div></div>
+    <div class="body"><textarea id="revText" style="width:100%;height:260px;font-family:monospace;font-size:12px;border:1px solid var(--borde);border-radius:8px;padding:10px"></textarea><p class="legend" id="revHint">Separa con coma o punto y coma. Cargo: EU, TENS o MÉDICO.</p></div>
+    <div class="foot"><button class="b-ghost" onclick="cerrarRev()">Cancelar</button><button class="b-ghost" onclick="aplicarRevision(false)">Agregar a la nómina</button><button class="b-primary" onclick="aplicarRevision(true)">Reemplazar nómina</button></div>
+  </div>
+</div>
+<div id="printArea"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+const FIREBASE_CONFIG = {"databaseURL":"https://turnos-medicos-ed505-default-rtdb.firebaseio.com"};
+const DEFAULT_NOMINA=[{"rut": "23377246-1", "nombre": "JOSE", "apellido": "MORENO", "telefono": "9 44743034", "cargo": "TENS", "banco": "ESTADO", "tipoCuenta": "CUENTA CORRIENTE", "numCuenta": "8475717", "email": "lancer1420@hotmail.com", "grupo": "TENS"}, {"rut": "14475626-6", "nombre": "MAXIMO", "apellido": "ARAYA", "telefono": "9 64152709", "cargo": "TENS", "banco": "ESTADO", "tipoCuenta": "CUENTA VISTA", "numCuenta": "30170054756", "email": "maxarayaolmos@gmail.com", "grupo": "TENS"}, {"rut": "18672449-6", "nombre": "MARIA JOSE", "apellido": "GONZALEZ", "telefono": "973897280", "cargo": "TENS", "banco": "SANTANDER", "tipoCuenta": "CUENTA CORRIENTE", "numCuenta": "71331261", "email": "maria.jose.gonzalez.collao@gmail.com", "grupo": "TENS"}, {"rut": "17123096-9", "nombre": "LISSETTE", "apellido": "BRAVO", "telefono": "945838030", "cargo": "TENS", "banco": "SANTANDER", "tipoCuenta": "CUENTA VISTA", "numCuenta": "7017966507", "email": "libravogallardo@gmail.com", "grupo": "TENS"}, {"rut": "17464503-5", "nombre": "LEANDRO", "apellido": "JORDAN", "telefono": "932625607", "cargo": "TENS", "banco": "BCI", "tipoCuenta": "CUENTA CORRIENTE", "numCuenta": "27918289", "email": "leandro.jordan.v@gmail.com", "grupo": "TENS"}, {"rut": "10732508-5", "nombre": "WILLIAMS", "apellido": "BALLESTEROS", "telefono": "9 7847 9735", "cargo": "TENS", "banco": "SANTANDER", "tipoCuenta": "CUENTA VISTA", "numCuenta": "9079137666", "email": "willicolocolino@hotmail.com", "grupo": "TENS"}, {"rut": "16346542-6", "nombre": "JOCELYN", "apellido": "LAGUNAS", "telefono": "9 35484401", "cargo": "TENS", "banco": "ESTADO", "tipoCuenta": "CUENTA VISTA", "numCuenta": "26870084357", "email": "jocelyn.lagunas1986@gmail.com", "grupo": "TENS"}, {"rut": "8776423-0", "nombre": "PATRICIA", "apellido": "SAGUAS", "telefono": "9 4405 0450", "cargo": "TENS", "banco": "ESTADO", "tipoCuenta": "RUT", "numCuenta": "8776423", "email": "mamaguerrea@hotmail.com", "grupo": "TENS"}, {"rut": "15526479-9", "nombre": "MANUEL", "apellido": "ORTIZ", "telefono": "983225785", "cargo": "TENS", "banco": "ESTADO", "tipoCuenta": "RUT", "numCuenta": "15526479", "email": "m.ortizflorez@gmail.com", "grupo": "TENS"}];
+const NKEY="igalan_nomina_tens_v1";
+function cargarNomina(){try{const s=JSON.parse(localStorage.getItem(NKEY));if(Array.isArray(s)&&s.length)return s;}catch(e){}return DEFAULT_NOMINA.map(p=>Object.assign({},p));}
+function guardarNominaLS(){localStorage.setItem(NKEY,JSON.stringify(TODOS));cloudPush();}
+let TODOS=cargarNomina();
+const MESES=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const DIASEM=["D","L","M","M","J","V","S"];
+const $=id=>document.getElementById(id);
+const KEY="igalan_turnos_tens_v2";
+const CLOUD_PATH="igalan_turnos_tens";
+const LIBROS=[{slug:"tens",grupo:"TENS",label:"TENS"}];
+let est="tens";
+let STORE=cargar();
+function cargar(){let s;try{s=JSON.parse(localStorage.getItem(KEY));}catch(e){}
+  s=s||{};LIBROS.forEach(l=>{s[l.slug]=s[l.slug]||{};s[l.slug].tarifas=s[l.slug].tarifas||{};s[l.slug].turnos=s[l.slug].turnos||{};s[l.slug].ajustes=s[l.slug].ajustes||{};s[l.slug].mut=s[l.slug].mut||{};s[l.slug].roster=s[l.slug].roster||{};});return s;}
+const MUT_PCT=0.0093, BASE_HORA=29167;
+function persistir(){localStorage.setItem(KEY,JSON.stringify(STORE));cloudPush();}
+function E(){return STORE[est];}
+function personas(){const g=LIBROS.find(l=>l.slug===est).grupo;return TODOS.filter(p=>p.grupo===g);}
+(function init(){
+  $("books").innerHTML=LIBROS.map(l=>`<div class="book ${l.slug} ${l.slug===est?'active':''}" onclick="cambiarLibro('${l.slug}')">${l.label} (${TODOS.filter(p=>p.grupo===l.grupo).length})</div>`).join("");
+  const hoy=new Date();
+  MESES.forEach((m,i)=>{const o=document.createElement("option");o.value=i;o.textContent=m;$("mes").appendChild(o);});
+  for(let y=hoy.getFullYear()-1;y<=hoy.getFullYear()+2;y++){const o=document.createElement("option");o.value=y;o.textContent=y;$("anio").appendChild(o);}
+  $("mes").value=hoy.getMonth();$("anio").value=hoy.getFullYear();
+  $("mes").onchange=$("anio").onchange=refrescar;
+})();
+function cambiarLibro(s){est=s;document.querySelectorAll(".book").forEach(b=>b.classList.toggle("active",b.classList.contains(s)));refrescar();}
+function mesKey(){return $("anio").value+"-"+String(+$("mes").value+1).padStart(2,"0");}
+function diasMes(){return new Date(+$("anio").value,+$("mes").value+1,0).getDate();}
+function turnosMes(){const k=mesKey();E().turnos[k]=E().turnos[k]||{};return E().turnos[k];}
+function ajustesMes(){const k=mesKey();E().ajustes[k]=E().ajustes[k]||{};return E().ajustes[k];}
+function mutMes(){const k=mesKey();E().mut=E().mut||{};E().mut[k]=E().mut[k]||{};return E().mut[k];}
+function rosterMes(){const k=mesKey();E().roster=E().roster||{};E().roster[k]=E().roster[k]||{};return E().roster[k];}
+function tarifa(rut){return E().tarifas[rut]||{v12:0,v24:0,vh:0,vhe:0};}
+function ajuste(rut){return ajustesMes()[rut]||{unidad:"min",cant:0,acc:"desc"};}
+function mutBase(rut){return +mutMes()[rut]||0;}
+function mutValor(rut){return mutBase(rut)*MUT_PCT;}
+function fmt(n){const v=Math.round(n||0);return (v<0?"-$":"$")+Math.abs(v).toLocaleString("es-CL");}
+function tab(id,el){document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));$(id).classList.add("active");el.classList.add("active");
+  if(id==="res")renderRes();if(id==="cfg")renderCfg();if(id==="aju")renderAju();if(id==="nom")renderNom();if(id==="roster")renderRoster();}
+function actualizarBooks(){$("books").innerHTML=LIBROS.map(l=>`<div class="book ${l.slug} ${l.slug===est?'active':''}" onclick="cambiarLibro('${l.slug}')">${l.label} (${TODOS.filter(p=>p.grupo===l.grupo).length})</div>`).join("");}
+function refrescar(){actualizarBooks();renderCal();renderRoster();renderCfg();renderAju();renderRes();renderNom();}
+// CALENDARIO
+function renderCal(){
+  const nd=diasMes(),y=+$("anio").value,m=+$("mes").value,tm=turnosMes(),pers=personas();
+  let h="<thead><tr><th class='name'>Personal</th>";
+  for(let d=1;d<=nd;d++){const wd=new Date(y,m,d).getDay(),we=(wd===0||wd===6);h+=`<th class="${we?'we':''}">${d}<br>${DIASEM[wd]}</th>`;}
+  h+="<th class='tot'>12h</th><th class='tot'>24h</th><th class='tot'>Subtotal</th></tr></thead><tbody>";
+  pers.forEach((p,pi)=>{h+=`<tr><td class="name"><b>${p.nombre} ${p.apellido}</b> <span class="chip ${p.grupo}">${p.grupo}</span></td>`;
+    const r=tm[p.rut]||{};
+    for(let d=1;d<=nd;d++){const wd=new Date(y,m,d).getDay(),we=(wd===0||wd===6),v=r[d]||"";const cls=v==="12"?"v12":v==="24"?"v24":(we?"we":"");h+=`<td class="day ${cls}" data-pi="${pi}" data-d="${d}">${v}</td>`;}
+    h+=`<td class="tot" id="t12_${pi}"></td><td class="tot" id="t24_${pi}"></td><td class="tot montotot" id="mt_${pi}"></td></tr>`;});
+  h+="</tbody>";$("caltbl").innerHTML=h;
+  $("caltbl").querySelectorAll("td.day").forEach(td=>td.onclick=()=>cycle(td));
+  pers.forEach((p,pi)=>filaTot(pi));renderCalBox();}
+function renderCalBox(){const f=filas();const t={n12:0,n24:0,horas:0,sub:0,aj:0,total:0};f.forEach(x=>{t.n12+=x.n12;t.n24+=x.n24;t.horas+=x.horas;t.sub+=x.sub;t.aj+=x.aj;t.total+=x.total;});
+  const lib=LIBROS.find(l=>l.slug===est).label;
+  $("calbox").innerHTML=`<div class="cell"><div class="v">${t.n12+t.n24}</div><div class="k">Turnos del mes (${t.n12}×12h · ${t.n24}×24h)</div></div>
+    <div class="cell"><div class="v">${t.horas}</div><div class="k">Horas totales</div></div>
+    <div class="cell"><div class="v">${fmt(t.sub)}</div><div class="k">Subtotal turnos</div></div>
+    <div class="cell"><div class="v ${t.aj<0?'neg':t.aj>0?'pos':''}">${fmt(t.aj)}</div><div class="k">Ajustes retraso</div></div>
+    <div class="cell main"><div class="v">${fmt(t.total)}</div><div class="k">TOTAL DEL MES · ${lib} · ${MESES[+$("mes").value]} ${$("anio").value} (exento)</div></div>`;}
+function cycle(td){const pi=+td.dataset.pi,d=+td.dataset.d,p=personas()[pi],tm=turnosMes();tm[p.rut]=tm[p.rut]||{};const cur=tm[p.rut][d]||"",nxt=cur===""?"12":cur==="12"?"24":"";
+  if(nxt==="")delete tm[p.rut][d];else tm[p.rut][d]=nxt;td.textContent=nxt;td.className="day "+(nxt==="12"?"v12":nxt==="24"?"v24":"");
+  if(nxt===""){const wd=new Date(+$("anio").value,+$("mes").value,d).getDay();if(wd===0||wd===6)td.classList.add("we");}
+  filaTot(pi);renderCalBox();persistir();flash();}
+function contar(rut){const r=turnosMes()[rut]||{};let n12=0,n24=0;Object.values(r).forEach(v=>{if(v==="12")n12++;else if(v==="24")n24++;});return{n12,n24};}
+function filaTot(pi){const p=personas()[pi],{n12,n24}=contar(p.rut),t=tarifa(p.rut);const sub=n12*(+t.v12||0)+n24*(+t.v24||0);$("t12_"+pi).textContent=n12||"";$("t24_"+pi).textContent=n24||"";$("mt_"+pi).textContent=sub?fmt(sub):"";}
+// PAUTA
+function nombreCorto(p){const n=(p.nombre||"").trim().split(/\s+/)[0]||"";return (n?n[0]+". ":"")+(p.apellido||p.nombre||"");}
+function optsPersonas(sel){return '<option value="">—</option>'+personas().map(p=>`<option value="${p.rut}" ${sel===p.rut?"selected":""}>${nombreCorto(p)}</option>`).join("");}
+function recomputeDia(day){const rm=rosterMes(),r=rm[day]||{},tm=turnosMes();personas().forEach(p=>{if(tm[p.rut]&&tm[p.rut][day])delete tm[p.rut][day];});
+  const d=r.d,n=r.n,set=(rut,v)=>{tm[rut]=tm[rut]||{};tm[rut][day]=v;};if(d&&n&&d===n)set(d,"24");else{if(d)set(d,"12");if(n)set(n,"12");}}
+function setRoster(day,turno,rut){const rm=rosterMes();rm[day]=rm[day]||{};if(rut)rm[day][turno]=rut;else delete rm[day][turno];if(!rm[day].d&&!rm[day].n)delete rm[day];
+  recomputeDia(day);persistir();renderRoster();renderCal();renderRes();flash();}
+function renderRoster(){
+  const y=+$("anio").value,m=+$("mes").value,nd=diasMes(),rm=rosterMes();
+  const hoy=new Date(),esMesActual=(y===hoy.getFullYear()&&m===hoy.getMonth()),diaHoy=hoy.getDate();
+  if($("pautaTitulo"))$("pautaTitulo").textContent="📆 "+MESES[m]+" "+y+(esMesActual?" · (mes en curso)":"");
+  const DOW=["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
+  let weeks=[],cur=[];
+  for(let d=1;d<=nd;d++){const wd=(new Date(y,m,d).getDay()+6)%7;if(d===1){for(let i=0;i<wd;i++)cur.push(null);}cur.push(d);if(wd===6){weeks.push(cur);cur=[];}}
+  if(cur.length){while(cur.length<7)cur.push(null);weeks.push(cur);}
+  let html='<table class="calmes"><thead><tr>'+DOW.map((n,i)=>`<th class="${i>=5?'we':''}">${n}</th>`).join("")+'</tr></thead><tbody>';
+  weeks.forEach(w=>{html+="<tr>";w.forEach((d,i)=>{
+    if(!d){html+='<td class="empty"></td>';return;}
+    const we=i>=5,r=rm[d]||{},hy=esMesActual&&d===diaHoy,inc=(r.d||r.n)&&(!r.d||!r.n);
+    html+=`<td class="diacel ${we?'wecol':''} ${hy?'hoy':''} ${inc?'falta':''}"><div class="dnum">${d}${hy?" •":""}</div>`
+      +`<div class="dnsel"><div class="row"><span class="tag d">D</span><select onchange="setRoster(${d},'d',this.value)">${optsPersonas(r.d||"")}</select></div>`
+      +`<div class="row"><span class="tag n">N</span><select onchange="setRoster(${d},'n',this.value)">${optsPersonas(r.n||"")}</select></div></div></td>`;
+  });html+="</tr>";});
+  html+="</tbody></table>";
+  $("pautabody").innerHTML=html;
+  const faltan=[];for(let d=1;d<=nd;d++){const r=rm[d]||{};if((r.d||r.n)&&(!r.d||!r.n))faltan.push(d);}
+  const al=$("pautaAlert");if(faltan.length){al.style.display="block";al.innerHTML="⚠ Días con turno incompleto (no cubren 24h — falta Día o Noche): <b>"+faltan.join(", ")+"</b>";}else al.style.display="none";
+}
+// TARIFAS
+function renderCfg(){const lib=LIBROS.find(l=>l.slug===est).label;if($("cfgTitulo"))$("cfgTitulo").textContent="Valores del servicio: "+lib;
+  $("cfgbody").innerHTML=personas().map(p=>{const t=tarifa(p.rut);return `<tr><td>${p.nombre} ${p.apellido}</td>
+    <td><input type="number" min="0" value="${t.v12||""}" placeholder="0" oninput="setTarifa('${p.rut}','v12',this.value)"></td>
+    <td><input type="number" min="0" value="${t.v24||""}" placeholder="0" oninput="setTarifa('${p.rut}','v24',this.value)"></td>
+    <td><input type="number" min="0" value="${t.vh||""}" placeholder="${BASE_HORA}" oninput="setTarifa('${p.rut}','vh',this.value)"></td>
+    <td><input type="number" min="0" value="${t.vhe||""}" placeholder="${BASE_HORA}" oninput="setTarifa('${p.rut}','vhe',this.value)"></td></tr>`;}).join("");}
+function setTarifa(rut,c,v){E().tarifas[rut]=E().tarifas[rut]||{v12:0,v24:0,vh:0,vhe:0};E().tarifas[rut][c]=+v||0;
+  if(c==="vh"||c==="vhe"){const el=$("va_"+rut);if(el){const val=valorAjuste(rut);el.textContent=val?fmt(val):"—";el.className=val<0?"neg":val>0?"pos":"";}const b=$("vhb_"+rut);if(b)b.textContent=fmt(valorUnidadBaseFila(rut));}
+  renderCalBox();persistir();flash();}
+function aplicarRapido(){const v12=+$("qf12").value||0,v24=+$("qf24").value||0,vh=+$("qfvh").value||BASE_HORA,vhe=+$("qfvhe").value||vh;personas().forEach(p=>{E().tarifas[p.rut]={v12,v24,vh,vhe};});persistir();renderCfg();renderAju();renderCalBox();flash();}
+// AJUSTES
+function valorHoraNormal(rut){const t=tarifa(rut);return (+t.vh)||BASE_HORA;}
+function valorHoraExtra(rut){const t=tarifa(rut);return (+t.vhe)||(+t.vh)||BASE_HORA;}
+function valorHoraSegun(rut,acc){return acc==="suma"?valorHoraExtra(rut):valorHoraNormal(rut);}
+function valorUnidad(rut,unidad,acc){const b=valorHoraSegun(rut,acc);return unidad==="hora"?b:b/60;}
+function valorUnidadBaseFila(rut){const a=ajuste(rut);return valorHoraSegun(rut,a.acc);}
+function valorAjuste(rut){const a=ajuste(rut);const c=+a.cant||0;if(!c)return 0;return (a.acc==="suma"?1:-1)*c*valorUnidad(rut,a.unidad,a.acc);}
+function unidadTxt(u){return u==="hora"?"hora":"minuto";}
+function renderAju(){$("ajubody").innerHTML=personas().map(p=>{const a=ajuste(p.rut),val=valorAjuste(p.rut);return `<tr><td>${p.nombre} ${p.apellido}</td>
+  <td><select onchange="setAju('${p.rut}','unidad',this.value)"><option value="min" ${a.unidad!=="hora"?"selected":""}>Minuto</option><option value="hora" ${a.unidad==="hora"?"selected":""}>Hora</option></select></td>
+  <td><input type="number" min="0" style="width:80px" value="${a.cant||""}" placeholder="0" oninput="setAju('${p.rut}','cant',this.value)"></td>
+  <td><select onchange="setAju('${p.rut}','acc',this.value)"><option value="desc" ${a.acc!=="suma"?"selected":""}>Descontar (normal)</option><option value="suma" ${a.acc==="suma"?"selected":""}>Sumar (extra)</option></select></td>
+  <td id="vhb_${p.rut}">${fmt(valorUnidadBaseFila(p.rut))}</td>
+  <td id="va_${p.rut}" class="${val<0?'neg':val>0?'pos':''}" style="font-weight:700">${val?fmt(val):"—"}</td></tr>`;}).join("");}
+function setAju(rut,c,v){const am=ajustesMes();am[rut]=am[rut]||{unidad:"min",cant:0,acc:"desc"};am[rut][c]=(c==="cant")?(+v||0):v;
+  const val=valorAjuste(rut);const el=$("va_"+rut);if(el){el.textContent=val?fmt(val):"—";el.className=val<0?"neg":val>0?"pos":"";}const b=$("vhb_"+rut);if(b)b.textContent=fmt(valorUnidadBaseFila(rut));renderCalBox();persistir();flash();}
+function setMut(rut,v){mutMes()[rut]=+v||0;const el=$("mut_"+rut);if(el)el.textContent=fmt(mutValor(rut));persistir();flash();}
+// RESUMEN
+function filas(){return personas().map(p=>{const{n12,n24}=contar(p.rut),t=tarifa(p.rut);const horas=n12*12+n24*24,sub=n12*(+t.v12||0)+n24*(+t.v24||0),aj=valorAjuste(p.rut);return{p,n12,n24,horas,sub,aj,total:sub+aj};});}
+function renderRes(){const f=filas(),tot={n12:0,n24:0,horas:0,sub:0,aj:0,total:0,mutb:0,mutv:0};
+  f.forEach(x=>{tot.n12+=x.n12;tot.n24+=x.n24;tot.horas+=x.horas;tot.sub+=x.sub;tot.aj+=x.aj;tot.total+=x.total;tot.mutb+=mutBase(x.p.rut);tot.mutv+=mutValor(x.p.rut);});
+  const lib=LIBROS.find(l=>l.slug===est).label;
+  $("kpis").innerHTML=`<div class="kpi"><div class="n">${fmt(tot.total)}</div><div class="l">Total a pagar · ${lib} · ${MESES[+$("mes").value]} ${$("anio").value} <span class="exento">exento</span></div></div>
+    <div class="kpi"><div class="n">${f.filter(x=>x.n12+x.n24>0).length}</div><div class="l">Personas con turnos</div></div>
+    <div class="kpi"><div class="n">${tot.n12+tot.n24}</div><div class="l">Turnos (${tot.n12}×12h · ${tot.n24}×24h)</div></div>
+    <div class="kpi"><div class="n ${tot.aj<0?'neg':'pos'}">${fmt(tot.aj)}</div><div class="l">Ajustes retraso</div></div>
+    <div class="kpi"><div class="n">${fmt(tot.mutv)}</div><div class="l">Mutualidad 0,93% (informativo)</div></div>`;
+  $("resbody").innerHTML=f.map(x=>`<tr><td>${x.p.nombre} ${x.p.apellido}</td><td class="num">${x.n12}</td><td class="num">${x.n24}</td><td class="num">${x.horas}</td>
+    <td class="num">${fmt(x.sub)}</td><td class="num ${x.aj<0?'neg':x.aj>0?'pos':''}">${x.aj?fmt(x.aj):"—"}</td><td class="num montotot">${fmt(x.total)}</td>
+    <td class="num no-print"><input type="number" min="0" style="width:110px;text-align:right" value="${mutBase(x.p.rut)||""}" placeholder="0" oninput="setMut('${x.p.rut}',this.value)"></td>
+    <td class="num" id="mut_${x.p.rut}">${mutValor(x.p.rut)?fmt(mutValor(x.p.rut)):"—"}</td>
+    <td class="num no-print" style="white-space:nowrap"><button class="b-ghost" style="padding:5px 8px" onclick="liquidacion('${x.p.rut}')">Ver</button> <button class="b-ok" style="padding:5px 8px" onclick="compartirPDF('${x.p.rut}')">PDF</button></td></tr>`).join("");
+  $("resfoot").innerHTML=`<tr><td>TOTALES</td><td class="num">${tot.n12}</td><td class="num">${tot.n24}</td><td class="num">${tot.horas}</td><td class="num">${fmt(tot.sub)}</td><td class="num">${fmt(tot.aj)}</td><td class="num">${fmt(tot.total)}</td><td class="num">${fmt(tot.mutb)}</td><td class="num">${fmt(tot.mutv)}</td><td></td></tr>`;}
+function liquidacion(rut){const p=personas().find(x=>x.rut===rut),{n12,n24}=contar(rut),t=tarifa(rut),a=ajuste(rut);const sub=n12*(+t.v12||0)+n24*(+t.v24||0),aj=valorAjuste(rut),total=sub+aj;
+  const ajTxt=(+a.cant||0)?`${a.cant} ${unidadTxt(a.unidad)}(s) × ${fmt(valorUnidad(rut,a.unidad,a.acc))} · ${a.acc==="suma"?"suma (extra)":"descuento (normal)"}`:"sin ajuste";
+  $("liq").innerHTML=`<div class="top"><h2>${p.nombre} ${p.apellido}</h2><div class="s">${p.cargo} · RUT ${p.rut} · ${MESES[+$("mes").value]} ${$("anio").value}</div></div>
+    <div class="body"><div class="r"><span>Turnos 12h</span><span>${n12} × ${fmt(t.v12)} = ${fmt(n12*(+t.v12||0))}</span></div>
+    <div class="r"><span>Turnos 24h</span><span>${n24} × ${fmt(t.v24)} = ${fmt(n24*(+t.v24||0))}</span></div>
+    <div class="r"><span>Subtotal turnos</span><span>${fmt(sub)}</span></div>
+    <div class="r"><span>Ajuste retraso (${ajTxt})</span><span class="${aj<0?'neg':aj>0?'pos':''}">${aj?fmt(aj):"—"}</span></div>
+    <div class="r"><span>Banco / cuenta</span><span>${p.banco||"—"} ${p.numCuenta||""}</span></div>
+    <div class="r big"><span>Total a pagar</span><span>${fmt(total)} <span class="exento">exento</span></span></div>
+    <div class="r" style="font-size:12px;color:var(--gris)"><span>Mutualidad 0,93% (informativo)<br>base ${fmt(mutBase(rut))}</span><span>${fmt(mutValor(rut))}</span></div></div>
+    <div class="foot"><button class="b-ghost" onclick="cerrar()">Cerrar</button><button class="b-ghost" onclick="imprimirLiq('${rut}')">🖨 Imprimir</button><button class="b-ok" onclick="descargarPDF('${rut}')">📄 PDF</button><button class="b-primary" onclick="compartirPDF('${rut}')">📤 Compartir</button></div>`;
+  $("modal").classList.add("show");}
+function cerrar(){$("modal").classList.remove("show");}
+function imprimirLiq(rut){const p=personas().find(x=>x.rut===rut),{n12,n24}=contar(rut),t=tarifa(rut),a=ajuste(rut);const sub=n12*(+t.v12||0)+n24*(+t.v24||0),aj=valorAjuste(rut),total=sub+aj;
+  const ajTxt=(+a.cant||0)?`${a.cant} ${unidadTxt(a.unidad)}(s) × ${fmt(valorUnidad(rut,a.unidad,a.acc))} · ${a.acc==="suma"?"suma (extra)":"descuento (normal)"}`:"sin ajuste";
+  const td='style="padding:8px;border:1px solid #ccc"',k='style="padding:8px;border:1px solid #ccc;background:#f1f5f9"';
+  $("printArea").innerHTML=`<div style="font-family:Arial;max-width:620px;margin:0 auto;padding:30px"><h2 style="text-align:center">LIQUIDACIÓN DE TURNOS</h2>
+    <p style="text-align:center;color:#475569">${LIBROS.find(l=>l.slug===est).label} · ${MESES[+$("mes").value]} ${$("anio").value} · Folio L-${p.rut}</p>
+    <table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:14px">
+    <tr><td ${k}><b>Nombre</b></td><td ${td}>${p.nombre} ${p.apellido}</td></tr><tr><td ${k}><b>RUT</b></td><td ${td}>${p.rut}</td></tr>
+    <tr><td ${k}><b>Cargo</b></td><td ${td}>${p.cargo}</td></tr>
+    <tr><td ${k}><b>Turnos 12h</b></td><td ${td}>${n12} × ${fmt(t.v12)} = ${fmt(n12*(+t.v12||0))}</td></tr>
+    <tr><td ${k}><b>Turnos 24h</b></td><td ${td}>${n24} × ${fmt(t.v24)} = ${fmt(n24*(+t.v24||0))}</td></tr>
+    <tr><td ${k}><b>Subtotal turnos</b></td><td ${td}>${fmt(sub)}</td></tr>
+    <tr><td ${k}><b>Ajuste retraso</b></td><td ${td}>${ajTxt} = ${fmt(aj)}</td></tr>
+    <tr><td ${k}><b>Banco / cuenta</b></td><td ${td}>${p.banco||"—"} ${p.tipoCuenta||""} ${p.numCuenta||""}</td></tr>
+    <tr><td style="padding:10px;border:1px solid #ccc;background:#eff6ff"><b>TOTAL A PAGAR</b></td><td style="padding:10px;border:1px solid #ccc;font-size:18px;font-weight:700;color:#1e3a8a">${fmt(total)} (exento)</td></tr>
+    <tr><td ${k}><b>Mutualidad 0,93%</b><br><span style="font-weight:400;font-size:11px;color:#64748b">informativo</span></td><td ${td}>base ${fmt(mutBase(rut))} × 0,93% = <b>${fmt(mutValor(rut))}</b></td></tr>
+    </table><div style="display:flex;gap:50px;margin-top:60px"><div style="flex:1;text-align:center;border-top:1px solid #333;padding-top:6px;font-size:12px">Recibí conforme</div><div style="flex:1;text-align:center;border-top:1px solid #333;padding-top:6px;font-size:12px">Autoriza pago</div></div></div>`;
+  window.print();setTimeout(()=>{$("printArea").innerHTML="";},500);}
+function imprimirNomina(){const f=filas().filter(x=>x.total!==0||x.n12+x.n24>0);let tot=0;
+  const rows=f.map(x=>{tot+=x.total;return `<tr><td style="padding:6px;border:1px solid #ccc">${x.p.nombre} ${x.p.apellido}</td><td style="padding:6px;border:1px solid #ccc">${x.p.rut}</td><td style="padding:6px;border:1px solid #ccc">${x.p.banco||"—"} ${x.p.numCuenta||""}</td><td style="padding:6px;border:1px solid #ccc;text-align:right">${fmt(x.sub)}</td><td style="padding:6px;border:1px solid #ccc;text-align:right">${fmt(x.aj)}</td><td style="padding:6px;border:1px solid #ccc;text-align:right;font-weight:700">${fmt(x.total)}</td></tr>`;}).join("");
+  $("printArea").innerHTML=`<div style="font-family:Arial;padding:24px"><h2 style="text-align:center">NÓMINA DE PAGO — ${LIBROS.find(l=>l.slug===est).label} — ${MESES[+$("mes").value]} ${$("anio").value}</h2>
+    <p style="text-align:center;color:#475569">Servicios exentos</p><table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:12px">
+    <tr style="background:#1e3a8a;color:#fff"><th style="padding:7px;text-align:left">Nombre</th><th style="padding:7px;text-align:left">RUT</th><th style="padding:7px;text-align:left">Banco/cuenta</th><th style="padding:7px;text-align:right">Subtotal</th><th style="padding:7px;text-align:right">Ajuste</th><th style="padding:7px;text-align:right">Total</th></tr>
+    ${rows}<tr style="background:#eff6ff;font-weight:700"><td colspan="5" style="padding:8px;border:1px solid #ccc">TOTAL</td><td style="padding:8px;border:1px solid #ccc;text-align:right">${fmt(tot)}</td></tr></table></div>`;
+  window.print();setTimeout(()=>{$("printArea").innerHTML="";},500);}
+function exportarCSV(){const f=filas();let csv="Estamento;Nombre;Apellido;RUT;Banco;NumeroCuenta;Turnos12h;Turnos24h;Horas;SubtotalTurnos;AjusteRetraso;TotalPagar;Impuesto;BaseMutualidad;Mutualidad0.93%\n";const lib=LIBROS.find(l=>l.slug===est).label;
+  f.forEach(x=>{csv+=[lib,x.p.nombre,x.p.apellido,x.p.rut,x.p.banco,x.p.numCuenta,x.n12,x.n24,x.horas,x.sub,x.aj,x.total,"Exento",mutBase(x.p.rut),Math.round(mutValor(x.p.rut))].join(";")+"\n";});
+  dl("﻿"+csv,`pagos_${est}_${mesKey()}.csv`,"text/csv;charset=utf-8;");}
+function exportarBackup(){dl(JSON.stringify(STORE),`respaldo_turnos_${new Date().toISOString().slice(0,10)}.json`,"application/json");}
+function importarBackup(inp){const f=inp.files[0];if(!f)return;const rd=new FileReader();rd.onload=e=>{try{STORE=JSON.parse(e.target.result);LIBROS.forEach(l=>{STORE[l.slug]=STORE[l.slug]||{tarifas:{},turnos:{},ajustes:{},mut:{},roster:{}};STORE[l.slug].mut=STORE[l.slug].mut||{};STORE[l.slug].roster=STORE[l.slug].roster||{};});persistir();refrescar();flash();alert("Respaldo importado.");}catch(err){alert("Archivo inválido.");}};rd.readAsText(f);}
+function dl(content,name,type){const b=new Blob([content],{type});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;a.click();}
+function normRut(r){return (r||"").toString().replace(/[.\s]/g,"").replace(/-/g,"").toUpperCase();}
+const SLUG={"MÉDICO":"medicos","TENS":"tens","EU":"eu"};
+function importarTurnosCSV(inp){const file=inp.files[0];if(!file)return;const rd=new FileReader();rd.onload=e=>{try{
+  const txt=e.target.result.replace(/\r/g,"");const lines=txt.split("\n").filter(l=>l.trim()!=="");
+  let hi=lines.findIndex(l=>/(^|[;,])\s*RUT\s*([;,]|$)/i.test(l));if(hi<0)hi=0;
+  const delim=(lines[hi].split(";").length>=lines[hi].split(",").length)?";":",";
+  const headers=lines[hi].split(delim).map(s=>s.trim().replace(/^"|"$/g,""));
+  const rutIdx=headers.findIndex(h=>h.toUpperCase()==="RUT");if(rutIdx<0){alert("No se encontró la columna RUT.");return;}
+  const dayCols=headers.map((h,i)=>({i,d:parseInt(h,10)})).filter(o=>o.d>=1&&o.d<=31);if(!dayCols.length){alert("No se encontraron columnas de días 1..31.");return;}
+  const byRut={};TODOS.forEach(p=>byRut[normRut(p.rut)]=p);const mk=mesKey();let nP=0,nT=0,no=[];
+  for(let li=hi+1;li<lines.length;li++){const c=lines[li].split(delim).map(s=>s.trim().replace(/^"|"$/g,""));const rut=normRut(c[rutIdx]);if(!rut)continue;const p=byRut[rut];if(!p){if(c[rutIdx])no.push(c[rutIdx]);continue;}
+    const sl=SLUG[p.grupo];STORE[sl].turnos[mk]=STORE[sl].turnos[mk]||{};const reg={};let t=false;dayCols.forEach(o=>{const v=(c[o.i]||"").trim();if(v==="12"||v==="24"){reg[o.d]=v;nT++;t=true;}});STORE[sl].turnos[mk][p.rut]=reg;if(t)nP++;}
+  persistir();refrescar();flash();let m=`Importado a ${MESES[+$("mes").value]} ${$("anio").value}:\n${nP} personas · ${nT} turnos.`;if(no.length)m+=`\n\nRUT no encontrados: ${[...new Set(no)].join(", ")}`;alert(m);
+  }catch(err){alert("No se pudo leer el archivo (guárdalo como CSV).\n"+err);}inp.value="";};rd.readAsText(file,"UTF-8");}
+// NÓMINA
+function normGrupo(s){s=(s||"").toString().toUpperCase();if(/MED|MÉD/.test(s))return "MÉDICO";if(/TENS/.test(s))return "TENS";if(/EU|ENFERM/.test(s))return "EU";return s.trim()||"EU";}
+function renderNom(){$("nombody").innerHTML=TODOS.map((p,i)=>`<tr><td>${p.rut||""}</td><td>${p.nombre||""}</td><td>${p.apellido||""}</td><td><span class="chip ${p.grupo}">${p.grupo}</span></td><td>${p.telefono||""}</td><td>${p.banco||""}</td><td>${p.numCuenta||""}</td><td>${p.email||""}</td><td><button class="b-ghost no-print" style="padding:4px 8px" onclick="borrarPersona(${i})">✕</button></td></tr>`).join("")||`<tr><td colspan="9" style="text-align:center;color:#94a3b8;padding:18px">Nómina vacía.</td></tr>`;
+  const c=g=>TODOS.filter(p=>p.grupo===g).length;$("nomMsg").innerHTML=`Personal: <b>${TODOS.length}</b> · EU ${c("EU")} · TENS ${c("TENS")} · Médicos ${c("MÉDICO")}. Columnas Excel: RUT, Nombre, Apellido, Cargo, Teléfono, Banco, Tipo cuenta, N° cuenta, Email.`;}
+function borrarPersona(i){if(!confirm("¿Quitar a "+TODOS[i].nombre+" "+TODOS[i].apellido+"?"))return;TODOS.splice(i,1);guardarNominaLS();refrescar();}
+function agregarPersonaManual(){const rut=prompt("RUT:");if(!rut)return;const nombre=prompt("Nombre:")||"",apellido=prompt("Apellido:")||"",grupo=normGrupo(prompt("Cargo (EU, TENS o MÉDICO):")||"EU");TODOS.push({rut:rut.trim(),nombre:nombre.trim(),apellido:apellido.trim(),cargo:grupo,grupo,telefono:"",banco:"",tipoCuenta:"",numCuenta:"",email:""});guardarNominaLS();refrescar();flash();}
+function restaurarNomina(){if(!confirm("¿Restaurar nómina original? (los turnos no se borran)"))return;localStorage.removeItem(NKEY);TODOS=cargarNomina();refrescar();flash();}
+function filaApersona(obj){const norm={};Object.keys(obj).forEach(k=>{norm[k.toString().toLowerCase().replace(/[^a-z0-9]/g,"")]=obj[k];});
+  const get=(...keys)=>{for(const w of keys){if(w in norm)return (norm[w]??"").toString().trim();}for(const w of keys){for(const kn of Object.keys(norm)){if(kn.includes(w))return (norm[kn]??"").toString().trim();}}return "";};
+  const rut=get("rut","run","identificacion");if(!rut)return null;const grupo=normGrupo(get("cargo","grupo","estamento"));
+  return {rut,nombre:get("nombre"),apellido:get("apellido","apellidos"),cargo:grupo,grupo,telefono:get("telefono","fono","celular"),banco:get("banco"),tipoCuenta:get("tipocuenta","tipodecuenta"),numCuenta:get("ncuenta","numerodecuenta","numerocuenta","nrocuenta","numcuenta"),email:get("email","correo","mail")};}
+function importarNominaArchivo(inp){const f=inp.files[0];if(!f)return;if(typeof XLSX==="undefined"){alert("Lector Excel no disponible (requiere internet la 1ª vez). Usa CSV.");inp.value="";return;}
+  const rd=new FileReader();rd.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:"array"});const ws=wb.Sheets[wb.SheetNames[0]];let rows=XLSX.utils.sheet_to_json(ws,{defval:""});
+    if(rows.length&&!Object.keys(rows[0]).some(k=>/rut/i.test(k))){const aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:""});const hi=aoa.findIndex(r=>r.some(c=>/^rut$/i.test((c||"").toString().trim())));if(hi>=0){const hdr=aoa[hi].map(c=>(c||"").toString());rows=aoa.slice(hi+1).map(r=>{const o={};hdr.forEach((h,j)=>o[h]=r[j]);return o;});}}
+    const nuevos=rows.map(filaApersona).filter(Boolean);if(!nuevos.length){alert("No se reconocieron filas con RUT.");inp.value="";return;}
+    $("revText").value=nuevos.map(p=>[p.rut,p.nombre,p.apellido,p.grupo,p.telefono,p.banco,p.tipoCuenta,p.numCuenta,p.email].join(", ")).join("\n");$("revHint").textContent=`Se leyeron ${nuevos.length} personas. Revisa y elige Agregar o Reemplazar.`;$("revModal").classList.add("show");
+  }catch(err){alert("No se pudo leer el Excel.\n"+err);}inp.value="";};rd.readAsArrayBuffer(f);}
+function importarNominaImagen(inp){const f=inp.files[0];if(!f)return;if(typeof Tesseract==="undefined"){alert("OCR no disponible (requiere internet). Escribe las filas a mano.");abrirRevVacio();inp.value="";return;}
+  $("nomMsg").textContent="Procesando imagen (OCR)…";Tesseract.recognize(f,"spa+eng").then(({data})=>{const lineas=data.text.split("\n").map(l=>l.trim()).filter(l=>l.length>3);$("revText").value=lineas.join("\n");$("revHint").textContent="Texto OCR — ⚠ revisa y corrige: una persona por línea con campos separados por coma.";$("revModal").classList.add("show");renderNom();}).catch(err=>{alert("No se pudo procesar la imagen.\n"+err);renderNom();});inp.value="";}
+function abrirRevVacio(){$("revText").value="";$("revHint").textContent="Una persona por línea: RUT, Nombre, Apellido, Cargo, ...";$("revModal").classList.add("show");}
+function cerrarRev(){$("revModal").classList.remove("show");}
+function aplicarRevision(reemplazar){const lineas=$("revText").value.split("\n").map(l=>l.trim()).filter(Boolean);const nuevos=[];
+  lineas.forEach(l=>{const c=l.split(/[;,]/).map(s=>s.trim());const rut=c[0];if(!rut||!/\d/.test(rut))return;nuevos.push({rut,nombre:c[1]||"",apellido:c[2]||"",cargo:normGrupo(c[3]||"EU"),grupo:normGrupo(c[3]||"EU"),telefono:c[4]||"",banco:c[5]||"",tipoCuenta:c[6]||"",numCuenta:c[7]||"",email:c[8]||""});});
+  if(!nuevos.length){alert("No se reconocieron filas válidas.");return;}
+  if(reemplazar){TODOS=nuevos;}else{const idx={};TODOS.forEach((p,i)=>idx[normRut(p.rut)]=i);nuevos.forEach(np=>{const kk=normRut(np.rut);if(kk in idx)TODOS[idx[kk]]=np;else TODOS.push(np);});}
+  guardarNominaLS();cerrarRev();refrescar();flash();alert((reemplazar?"Nómina reemplazada":"Nómina actualizada")+`: ${TODOS.length} personas.`);}
+// NUBE
+const CFGKEY="igalan_fb_cfg_tens";
+let fbRef=null,deviceId=localStorage.getItem("igalan_dev_tens")||(localStorage.setItem("igalan_dev_tens","d"+Date.now()+Math.random().toString(36).slice(2,7)),localStorage.getItem("igalan_dev_tens"));
+let aplicandoRemoto=false,pushTimer=null;
+function setNubeUI(estado,color){$("nubeEstado").textContent=estado;$("nubeEstado").style.color=color||"";$("nubeIco").textContent=color==="#16a34a"?"✅":color==="#dc2626"?"⚠️":"☁️";const inf=$("nubeInfo");if(inf)inf.innerHTML="Estado: <b>"+estado+"</b>.";}
+function cfgGuardada(){try{return JSON.parse(localStorage.getItem(CFGKEY));}catch(e){return null;}}
+function initNube(){const cfg=(FIREBASE_CONFIG)||cfgGuardada();if(!cfg||!cfg.databaseURL){setNubeUI("local (sin nube)");return;}if(typeof firebase==="undefined"){setNubeUI("sin internet","#dc2626");return;}
+  try{if(!firebase.apps.length)firebase.initializeApp(cfg);fbRef=firebase.database().ref(CLOUD_PATH);setNubeUI("conectando…");
+    fbRef.on("value",snap=>{const data=snap.val();if(!data){cloudPush(true);setNubeUI("conectado","#16a34a");return;}if(data._by===deviceId){setNubeUI("conectado","#16a34a");return;}
+      aplicandoRemoto=true;if(data.store){STORE=data.store;LIBROS.forEach(l=>{STORE[l.slug]=STORE[l.slug]||{tarifas:{},turnos:{},ajustes:{},mut:{},roster:{}};STORE[l.slug].mut=STORE[l.slug].mut||{};STORE[l.slug].roster=STORE[l.slug].roster||{};});localStorage.setItem(KEY,JSON.stringify(STORE));}
+      if(data.nomina){TODOS=data.nomina;localStorage.setItem(NKEY,JSON.stringify(TODOS));}aplicandoRemoto=false;refrescar();setNubeUI("conectado","#16a34a");},err=>{setNubeUI("error: "+err.code,"#dc2626");});
+    firebase.database().ref(".info/connected").on("value",s=>{if(fbRef)setNubeUI(s.val()?"conectado":"reconectando…",s.val()?"#16a34a":"");});
+  }catch(e){setNubeUI("config inválida","#dc2626");}}
+function cloudPush(force){if(!fbRef||aplicandoRemoto)return;clearTimeout(pushTimer);pushTimer=setTimeout(()=>{fbRef.set({store:STORE,nomina:TODOS,_by:deviceId,_ts:Date.now()}).catch(()=>{});},force?0:600);}
+function abrirNube(){const cfg=cfgGuardada();if(cfg)$("nubeCfg").value=JSON.stringify(cfg,null,1);$("nubeModal").classList.add("show");}
+function conectarNubeDesdeUI(){let txt=$("nubeCfg").value.trim();if(!txt){alert("Pega la configuración.");return;}try{const m=txt.match(/\{[\s\S]*\}/);const cfg=JSON.parse(m?m[0]:txt);if(!cfg.databaseURL){alert("Falta 'databaseURL'.");return;}localStorage.setItem(CFGKEY,JSON.stringify(cfg));$("nubeModal").classList.remove("show");if(fbRef){try{fbRef.off();}catch(e){}}initNube();}catch(e){alert("JSON inválido.\n"+e);}}
+function desconectarNube(){localStorage.removeItem(CFGKEY);if(fbRef){try{fbRef.off();}catch(e){}fbRef=null;}setNubeUI("local (sin nube)");$("nubeModal").classList.remove("show");}
+// PDF
+function buildPDF(rut){const p=personas().find(x=>x.rut===rut),{n12,n24}=contar(rut),t=tarifa(rut),a=ajuste(rut);const sub=n12*(+t.v12||0)+n24*(+t.v24||0),aj=valorAjuste(rut),total=sub+aj;
+  const ajTxt=(+a.cant||0)?`${a.cant} ${unidadTxt(a.unidad)}(s) × ${fmt(valorUnidad(rut,a.unidad,a.acc))} · ${a.acc==="suma"?"suma (extra)":"descuento (normal)"}`:"sin ajuste";
+  const lib=LIBROS.find(l=>l.slug===est).label;const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:"mm",format:"a4"});let y=18;
+  doc.setFillColor(30,58,138);doc.rect(0,0,210,16,"F");doc.setTextColor(255);doc.setFontSize(14);doc.setFont(undefined,"bold");doc.text("LIQUIDACIÓN DE TURNOS",105,10,{align:"center"});
+  doc.setTextColor(30,41,59);y=26;doc.setFontSize(11);doc.setFont(undefined,"normal");doc.text(`${lib}  ·  ${MESES[+$("mes").value]} ${$("anio").value}  ·  Folio L-${p.rut}`,105,y,{align:"center"});y+=10;
+  const fila=(k,v)=>{doc.setFont(undefined,"bold");doc.setFillColor(241,245,249);doc.rect(20,y-5,60,8,"F");doc.text(k,22,y);doc.setFont(undefined,"normal");doc.text(String(v),84,y);y+=9;};
+  fila("Nombre",`${p.nombre} ${p.apellido}`);fila("RUT",p.rut);fila("Cargo",p.cargo);
+  fila("Turnos 12h",`${n12} × ${fmt(t.v12)} = ${fmt(n12*(+t.v12||0))}`);fila("Turnos 24h",`${n24} × ${fmt(t.v24)} = ${fmt(n24*(+t.v24||0))}`);
+  fila("Horas",`${n12*12+n24*24} h`);fila("Subtotal turnos",fmt(sub));fila("Ajuste retraso",`${ajTxt} = ${fmt(aj)}`);fila("Banco / cuenta",`${p.banco||"—"} ${p.tipoCuenta||""} ${p.numCuenta||""}`);
+  y+=2;doc.setFillColor(239,246,255);doc.rect(20,y-5,170,11,"F");doc.setFont(undefined,"bold");doc.setTextColor(30,58,138);doc.setFontSize(13);doc.text("TOTAL A PAGAR (exento)",22,y+1);doc.text(fmt(total),188,y+1,{align:"right"});y+=14;
+  doc.setTextColor(100);doc.setFontSize(9);doc.setFont(undefined,"normal");doc.text(`Mutualidad 0,93% (informativo): base ${fmt(mutBase(rut))} = ${fmt(mutValor(rut))}`,22,y);y+=10;
+  doc.setTextColor(120);doc.text("____________________",30,y+14);doc.text("Recibí conforme",40,y+19);doc.text("____________________",125,y+14);doc.text("Autoriza pago",140,y+19);
+  return {doc,nombre:`${p.nombre}_${p.apellido}`.replace(/\s+/g,"_"),total,p};}
+function pdfNombre(rut){return `Liquidacion_${buildPDF(rut).nombre}_${mesKey()}.pdf`;}
+function descargarPDF(rut){const {doc}=buildPDF(rut);doc.save(pdfNombre(rut));}
+async function compartirPDF(rut){const {doc,p,total}=buildPDF(rut);const fname=pdfNombre(rut);const blob=doc.output("blob");const file=new File([blob],fname,{type:"application/pdf"});
+  const texto=`Liquidación ${p.nombre} ${p.apellido} · ${MESES[+$("mes").value]} ${$("anio").value} · Total: ${fmt(total)} (exento)`;
+  if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:"Liquidación",text:texto});return;}catch(e){if(e.name==="AbortError")return;}}
+  doc.save(fname);mostrarCompartir(rut,texto);}
+function mostrarCompartir(rut,texto){const p=personas().find(x=>x.rut===rut);const tel=(p.telefono||"").replace(/\D/g,"");const wa=tel?`https://wa.me/56${tel.replace(/^56/,"")}?text=${encodeURIComponent(texto)}`:`https://wa.me/?text=${encodeURIComponent(texto)}`;const mail=`mailto:${p.email||""}?subject=${encodeURIComponent("Liquidación "+p.nombre)}&body=${encodeURIComponent(texto+"\n\n(Adjunta el PDF descargado)")}`;
+  $("liq").innerHTML=`<div class="top"><h2>Compartir liquidación</h2><div class="s">${p.nombre} ${p.apellido}</div></div><div class="body"><p class="legend">El PDF se descargó. Compártelo:</p><div style="display:flex;flex-direction:column;gap:8px"><a href="${wa}" target="_blank" style="text-decoration:none"><button class="b-ok" style="width:100%">🟢 WhatsApp${tel?" ("+p.telefono+")":""}</button></a><a href="${mail}" style="text-decoration:none"><button class="b-primary" style="width:100%">✉️ Correo${p.email?" ("+p.email+")":""}</button></a><button class="b-ghost" onclick="descargarPDF('${rut}')">⬇️ Descargar PDF otra vez</button></div><p class="legend" style="margin-top:10px">En computador adjunta el PDF descargado manualmente. En celular el botón Compartir envía el PDF directo.</p></div><div class="foot"><button class="b-ghost" onclick="cerrar()">Cerrar</button></div>`;$("modal").classList.add("show");}
+function guardar(){persistir();flash();}
+function flash(){const m=$("saveMsg");m.textContent="✓ Guardado";clearTimeout(window._s);window._s=setTimeout(()=>m.textContent="",1500);}
+function limpiarMes(){if(!confirm("¿Borrar turnos, ajustes, mutualidad y pauta de "+LIBROS.find(l=>l.slug===est).label+" en "+MESES[+$("mes").value]+" "+$("anio").value+"? (Tarifas se conservan)"))return;delete E().turnos[mesKey()];delete E().ajustes[mesKey()];if(E().mut)delete E().mut[mesKey()];if(E().roster)delete E().roster[mesKey()];persistir();refrescar();}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}
+initNube();refrescar();
+</script>
+</body>
+</html>
