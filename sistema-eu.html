@@ -128,6 +128,7 @@
   <div class="tab" onclick="tab('cfg',this)">💲 Tarifas</div>
   <div class="tab" onclick="tab('aju',this)">⏱ Ajustes por retraso</div>
   <div class="tab" onclick="tab('res',this)">📊 Resumen de pagos</div>
+  <div class="tab tab-extra" onclick="tab('extra',this)" style="display:none">➕ Cobertura extra</div>
   <div class="tab" onclick="tab('nom',this)">👥 Nómina</div>
 </div>
 <div class="wrap">
@@ -167,7 +168,7 @@
       <button class="b-ok" onclick="exportarCSV()">⬇ Exportar a Excel (CSV)</button>
       <button class="b-ghost" onclick="imprimirNomina()">🖨 Imprimir nómina de pago</button>
     </div>
-    <table class="res"><thead><tr><th>Nombre</th><th class="num">T12</th><th class="num">T24</th><th class="num">Horas</th><th class="num">Subtotal turnos</th><th class="num">Ajuste retraso</th><th class="num">Total a pagar</th><th class="num">Base mutualidad</th><th class="num">Mutualidad 0,93%</th><th></th></tr></thead><tbody id="resbody"></tbody><tfoot id="resfoot"></tfoot></table>
+    <table class="res"><thead><tr><th>Nombre</th><th class="num">T12</th><th class="num">T24</th><th class="num">Horas</th><th class="num">Cob. extra</th><th class="num">Subtotal turnos</th><th class="num">Ajuste retraso</th><th class="num">Total a pagar</th><th class="num">Base mutualidad</th><th class="num">Mutualidad 0,93%</th><th></th></tr></thead><tbody id="resbody"></tbody><tfoot id="resfoot"></tfoot></table>
   </section>
   <section id="nom">
     <p class="legend">Carga o actualiza la nómina: importa desde <b>Excel</b> (.xlsx/CSV) o <b>imagen</b> (OCR, con revisión), o agrega a mano.</p>
@@ -181,6 +182,16 @@
       <p class="legend" id="nomMsg" style="margin:8px 0 0">Columnas Excel: RUT, Nombre, Apellido, Cargo (EU/TENS/MÉDICO), Teléfono, Banco, Tipo cuenta, N° cuenta, Email.</p>
     </div>
     <table class="cfg"><thead><tr><th>RUT</th><th>Nombre</th><th>Apellido</th><th>Cargo</th><th>Teléfono</th><th>Banco</th><th>N° cuenta</th><th>Email</th><th></th></tr></thead><tbody id="nombody"></tbody></table>
+  </section>
+  <section id="extra">
+    <p class="legend">Cobertura extra de TENS (casos excepcionales): agrega turnos adicionales por día. Se pagan con la misma tarifa del servicio y entran al Resumen; los ajustes por retraso de la persona también aplican.</p>
+    <div class="quickfill no-print"><div class="row">
+      <div><label>Día</label><select id="exDia"></select></div>
+      <div><label>Persona</label><select id="exPer"></select></div>
+      <div><label>Tipo</label><select id="exTipo"><option value="12">12h</option><option value="24">24h</option></select></div>
+      <div><button class="b-primary" onclick="addExtra()">＋ Agregar cobertura</button></div>
+    </div></div>
+    <table class="cfg"><thead><tr><th>Día</th><th>Persona</th><th>Tipo</th><th>Valor</th><th></th></tr></thead><tbody id="extrabody"></tbody></table>
   </section>
 </div>
 <div class="modal" id="modal" onclick="if(event.target===this)cerrar()"><div class="liq" id="liq"></div></div>
@@ -223,7 +234,7 @@ const LIBROS=[{slug:"eu",grupo:"EU",label:"Enfermeras (EU)"}];
 let est="eu";
 let STORE=cargar();
 function cargar(){let s;try{s=JSON.parse(localStorage.getItem(KEY));}catch(e){}
-  s=s||{};LIBROS.forEach(l=>{s[l.slug]=s[l.slug]||{};s[l.slug].tarifas=s[l.slug].tarifas||{};s[l.slug].turnos=s[l.slug].turnos||{};s[l.slug].ajustes=s[l.slug].ajustes||{};s[l.slug].mut=s[l.slug].mut||{};s[l.slug].roster=s[l.slug].roster||{};});return s;}
+  s=s||{};LIBROS.forEach(l=>{s[l.slug]=s[l.slug]||{};s[l.slug].tarifas=s[l.slug].tarifas||{};s[l.slug].turnos=s[l.slug].turnos||{};s[l.slug].ajustes=s[l.slug].ajustes||{};s[l.slug].mut=s[l.slug].mut||{};s[l.slug].roster=s[l.slug].roster||{};s[l.slug].extra=s[l.slug].extra||{};});return s;}
 const MUT_PCT=0.0093, BASE_HORA=29167;
 function persistir(){localStorage.setItem(KEY,JSON.stringify(STORE));cloudPush();}
 function E(){return STORE[est];}
@@ -249,11 +260,14 @@ function mutBase(rut){return +mutMes()[rut]||0;}
 function mutValor(rut){return mutBase(rut)*MUT_PCT;}
 function fmt(n){const v=Math.round(n||0);return (v<0?"-$":"$")+Math.abs(v).toLocaleString("es-CL");}
 function tab(id,el){document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));$(id).classList.add("active");el.classList.add("active");
-  if(id==="cal")renderCal();if(id==="res")renderRes();if(id==="cfg")renderCfg();if(id==="aju")renderAju();if(id==="nom")renderNom();if(id==="roster")renderRoster();}
+  if(id==="cal")renderCal();if(id==="res")renderRes();if(id==="cfg")renderCfg();if(id==="aju")renderAju();if(id==="nom")renderNom();if(id==="roster")renderRoster();if(id==="extra")renderExtra();}
 function actualizarBooks(){$("books").innerHTML=LIBROS.map(l=>`<div class="book ${l.slug} ${l.slug===est?'active':''}" onclick="cambiarLibro('${l.slug}')">${l.label} (${TODOS.filter(p=>p.grupo===l.grupo).length})</div>`).join("");}
 function aplicarRosterMes(){const rm=rosterMes();Object.keys(rm).forEach(d=>recomputeDia(+d));}
 function aplicarPautaTodo(){aplicarRosterMes();persistir();renderCal();renderRes();renderCalBox();flash();alert("Pauta aplicada al Calendario 1. Ahora puedes ajustar el Calendario a mano si lo necesitas.");}
-function refrescar(){actualizarBooks();renderCal();renderRoster();renderCfg();renderAju();renderRes();renderNom();}
+let mesAutoHecho=false;
+function mesesConDatos(){const set=new Set();["turnos","roster","ajustes","extra"].forEach(k=>{const o=(E()[k])||{};Object.keys(o).forEach(mk=>{const v=o[mk];const has=(k==="extra")?(Array.isArray(v)&&v.length):(v&&Object.keys(v).length);if(has)set.add(mk);});});return [...set].sort();}
+function autoMes(){if(mesAutoHecho)return;const arr=mesesConDatos();const mk=mesKey();if(arr.length&&!arr.includes(mk)){const last=arr[arr.length-1].split("-");$("anio").value=+last[0];$("mes").value=(+last[1]-1);}mesAutoHecho=true;}
+function refrescar(){actualizarBooks();const te=document.querySelector(".tab-extra");if(te)te.style.display=(est==="tens")?"":"none";renderCal();renderRoster();renderCfg();renderAju();renderRes();renderNom();renderExtra();}
 // CALENDARIO
 function renderCal(){
   const nd=diasMes(),y=+$("anio").value,m=+$("mes").value,tm=turnosMes(),pers=personas();
@@ -279,6 +293,15 @@ function cycle(td){const pi=+td.dataset.pi,d=+td.dataset.d,p=personas()[pi],tm=t
   if(nxt===""){const wd=new Date(+$("anio").value,+$("mes").value,d).getDay();if(wd===0||wd===6)td.classList.add("we");}
   filaTot(pi);renderCalBox();persistir();flash();}
 function contar(rut){const r=turnosMes()[rut]||{};let n12=0,n24=0;Object.values(r).forEach(v=>{if(v==="12")n12++;else if(v==="24")n24++;});return{n12,n24};}
+function extraMes(){const k=mesKey();E().extra=E().extra||{};E().extra[k]=E().extra[k]||[];return E().extra[k];}
+function contarExtra(rut){let e12=0,e24=0;extraMes().forEach(x=>{if(x.rut===rut){if(x.tipo==="24")e24++;else e12++;}});return{e12,e24};}
+function addExtra(){const dia=+$("exDia").value,rut=$("exPer").value,tipo=$("exTipo").value;if(!rut){alert("Elige la persona.");return;}extraMes().push({dia,rut,tipo});persistir();renderExtra();renderRes();renderCal();flash();}
+function delExtra(i){extraMes().splice(i,1);persistir();renderExtra();renderRes();renderCal();flash();}
+function renderExtra(){const nd=diasMes();let od="";for(let d=1;d<=nd;d++)od+=`<option value="${d}">${d}</option>`;const ed=$("exDia");if(ed)ed.innerHTML=od;
+  const ep=$("exPer");if(ep)ep.innerHTML='<option value="">—</option>'+personas().map(p=>`<option value="${p.rut}">${p.nombre} ${p.apellido}</option>`).join("");
+  const tb=$("extrabody");if(!tb)return;const arr=extraMes();
+  tb.innerHTML=arr.map((x,i)=>{const p=personas().find(z=>z.rut===x.rut)||{nombre:x.rut,apellido:""};const t=tarifa(x.rut);const val=x.tipo==="24"?(+t.v24||0):(+t.v12||0);
+    return `<tr><td>${x.dia}</td><td>${p.nombre} ${p.apellido}</td><td>${x.tipo}h</td><td>${fmt(val)}</td><td class="no-print"><button class="b-ghost" style="padding:4px 8px" onclick="delExtra(${i})">✕</button></td></tr>`;}).join("")||`<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:14px">Sin coberturas extra este mes.</td></tr>`;}
 function filaTot(pi){const p=personas()[pi],{n12,n24}=contar(p.rut),t=tarifa(p.rut);const sub=n12*(+t.v12||0)+n24*(+t.v24||0);$("t12_"+pi).textContent=n12||"";$("t24_"+pi).textContent=n24||"";$("mt_"+pi).textContent=sub?fmt(sub):"";}
 // PAUTA
 function nombreCorto(p){const n=(p.nombre||"").trim().split(/\s+/)[0]||"";return (n?n[0]+". ":"")+(p.apellido||p.nombre||"");}
@@ -337,22 +360,22 @@ function setAju(rut,c,v){const am=ajustesMes();am[rut]=am[rut]||{unidad:"min",ca
   const val=valorAjuste(rut);const el=$("va_"+rut);if(el){el.textContent=val?fmt(val):"—";el.className=val<0?"neg":val>0?"pos":"";}const b=$("vhb_"+rut);if(b)b.textContent=fmt(valorUnidadBaseFila(rut));renderCalBox();persistir();flash();}
 function setMut(rut,v){mutMes()[rut]=+v||0;const el=$("mut_"+rut);if(el)el.textContent=fmt(mutValor(rut));persistir();flash();}
 // RESUMEN
-function filas(){return personas().map(p=>{const{n12,n24}=contar(p.rut),t=tarifa(p.rut);const horas=n12*12+n24*24,sub=n12*(+t.v12||0)+n24*(+t.v24||0),aj=valorAjuste(p.rut);return{p,n12,n24,horas,sub,aj,total:sub+aj};});}
-function renderRes(){const f=filas(),tot={n12:0,n24:0,horas:0,sub:0,aj:0,total:0,mutb:0,mutv:0};
-  f.forEach(x=>{tot.n12+=x.n12;tot.n24+=x.n24;tot.horas+=x.horas;tot.sub+=x.sub;tot.aj+=x.aj;tot.total+=x.total;tot.mutb+=mutBase(x.p.rut);tot.mutv+=mutValor(x.p.rut);});
+function filas(){return personas().map(p=>{const c=contar(p.rut),ex=contarExtra(p.rut),t=tarifa(p.rut);const n12=c.n12+ex.e12,n24=c.n24+ex.e24;const horas=n12*12+n24*24,sub=n12*(+t.v12||0)+n24*(+t.v24||0),aj=valorAjuste(p.rut);return{p,n12,n24,ex:ex.e12+ex.e24,horas,sub,aj,total:sub+aj};});}
+function renderRes(){const f=filas(),tot={n12:0,n24:0,horas:0,sub:0,aj:0,total:0,mutb:0,mutv:0,ex:0};
+  f.forEach(x=>{tot.n12+=x.n12;tot.n24+=x.n24;tot.ex+=x.ex;tot.horas+=x.horas;tot.sub+=x.sub;tot.aj+=x.aj;tot.total+=x.total;tot.mutb+=mutBase(x.p.rut);tot.mutv+=mutValor(x.p.rut);});
   const lib=LIBROS.find(l=>l.slug===est).label;
   $("kpis").innerHTML=`<div class="kpi"><div class="n">${fmt(tot.total)}</div><div class="l">Total a pagar · ${lib} · ${MESES[+$("mes").value]} ${$("anio").value} <span class="exento">exento</span></div></div>
     <div class="kpi"><div class="n">${f.filter(x=>x.n12+x.n24>0).length}</div><div class="l">Personas con turnos</div></div>
     <div class="kpi"><div class="n">${tot.n12+tot.n24}</div><div class="l">Turnos (${tot.n12}×12h · ${tot.n24}×24h)</div></div>
     <div class="kpi"><div class="n ${tot.aj<0?'neg':'pos'}">${fmt(tot.aj)}</div><div class="l">Ajustes retraso</div></div>
     <div class="kpi"><div class="n">${fmt(tot.mutv)}</div><div class="l">Mutualidad 0,93% (informativo)</div></div>`;
-  $("resbody").innerHTML=f.map(x=>`<tr><td>${x.p.nombre} ${x.p.apellido}</td><td class="num">${x.n12}</td><td class="num">${x.n24}</td><td class="num">${x.horas}</td>
+  $("resbody").innerHTML=f.map(x=>`<tr><td>${x.p.nombre} ${x.p.apellido}</td><td class="num">${x.n12}</td><td class="num">${x.n24}</td><td class="num">${x.horas}</td><td class="num">${x.ex||"—"}</td>
     <td class="num">${fmt(x.sub)}</td><td class="num ${x.aj<0?'neg':x.aj>0?'pos':''}">${x.aj?fmt(x.aj):"—"}</td><td class="num montotot">${fmt(x.total)}</td>
     <td class="num no-print"><input type="number" min="0" style="width:110px;text-align:right" value="${mutBase(x.p.rut)||""}" placeholder="0" oninput="setMut('${x.p.rut}',this.value)"></td>
     <td class="num" id="mut_${x.p.rut}">${mutValor(x.p.rut)?fmt(mutValor(x.p.rut)):"—"}</td>
     <td class="num no-print" style="white-space:nowrap"><button class="b-ghost" style="padding:5px 8px" onclick="liquidacion('${x.p.rut}')">Ver</button> <button class="b-ok" style="padding:5px 8px" onclick="compartirPDF('${x.p.rut}')">PDF</button></td></tr>`).join("");
-  $("resfoot").innerHTML=`<tr><td>TOTALES</td><td class="num">${tot.n12}</td><td class="num">${tot.n24}</td><td class="num">${tot.horas}</td><td class="num">${fmt(tot.sub)}</td><td class="num">${fmt(tot.aj)}</td><td class="num">${fmt(tot.total)}</td><td class="num">${fmt(tot.mutb)}</td><td class="num">${fmt(tot.mutv)}</td><td></td></tr>`;}
-function liquidacion(rut){const p=personas().find(x=>x.rut===rut),{n12,n24}=contar(rut),t=tarifa(rut),a=ajuste(rut);const sub=n12*(+t.v12||0)+n24*(+t.v24||0),aj=valorAjuste(rut),total=sub+aj;
+  $("resfoot").innerHTML=`<tr><td>TOTALES</td><td class="num">${tot.n12}</td><td class="num">${tot.n24}</td><td class="num">${tot.horas}</td><td class="num">${tot.ex}</td><td class="num">${fmt(tot.sub)}</td><td class="num">${fmt(tot.aj)}</td><td class="num">${fmt(tot.total)}</td><td class="num">${fmt(tot.mutb)}</td><td class="num">${fmt(tot.mutv)}</td><td></td></tr>`;}
+function liquidacion(rut){const p=personas().find(x=>x.rut===rut),c=contar(rut),ex=contarExtra(rut),t=tarifa(rut),a=ajuste(rut),n12=c.n12+ex.e12,n24=c.n24+ex.e24;const sub=n12*(+t.v12||0)+n24*(+t.v24||0),aj=valorAjuste(rut),total=sub+aj;
   const ajTxt=(+a.cant||0)?`${a.cant} ${unidadTxt(a.unidad)}(s) × ${fmt(valorUnidad(rut,a.unidad,a.acc))} · ${a.acc==="suma"?"suma (extra)":"descuento (normal)"}`:"sin ajuste";
   $("liq").innerHTML=`<div class="top"><h2>${p.nombre} ${p.apellido}</h2><div class="s">${p.cargo} · RUT ${p.rut} · ${MESES[+$("mes").value]} ${$("anio").value}</div></div>
     <div class="body"><div class="r"><span>Turnos 12h</span><span>${n12} × ${fmt(t.v12)} = ${fmt(n12*(+t.v12||0))}</span></div>
@@ -365,7 +388,7 @@ function liquidacion(rut){const p=personas().find(x=>x.rut===rut),{n12,n24}=cont
     <div class="foot"><button class="b-ghost" onclick="cerrar()">Cerrar</button><button class="b-ghost" onclick="imprimirLiq('${rut}')">🖨 Imprimir</button><button class="b-ok" onclick="descargarPDF('${rut}')">📄 PDF</button><button class="b-primary" onclick="compartirPDF('${rut}')">📤 Compartir</button></div>`;
   $("modal").classList.add("show");}
 function cerrar(){$("modal").classList.remove("show");}
-function imprimirLiq(rut){const p=personas().find(x=>x.rut===rut),{n12,n24}=contar(rut),t=tarifa(rut),a=ajuste(rut);const sub=n12*(+t.v12||0)+n24*(+t.v24||0),aj=valorAjuste(rut),total=sub+aj;
+function imprimirLiq(rut){const p=personas().find(x=>x.rut===rut),c=contar(rut),ex=contarExtra(rut),t=tarifa(rut),a=ajuste(rut),n12=c.n12+ex.e12,n24=c.n24+ex.e24;const sub=n12*(+t.v12||0)+n24*(+t.v24||0),aj=valorAjuste(rut),total=sub+aj;
   const ajTxt=(+a.cant||0)?`${a.cant} ${unidadTxt(a.unidad)}(s) × ${fmt(valorUnidad(rut,a.unidad,a.acc))} · ${a.acc==="suma"?"suma (extra)":"descuento (normal)"}`:"sin ajuste";
   const td='style="padding:8px;border:1px solid #ccc"',k='style="padding:8px;border:1px solid #ccc;background:#f1f5f9"';
   $("printArea").innerHTML=`<div style="font-family:Arial;max-width:620px;margin:0 auto;padding:30px"><h2 style="text-align:center">LIQUIDACIÓN DE TURNOS</h2>
@@ -393,7 +416,7 @@ function exportarCSV(){const f=filas();let csv="Estamento;Nombre;Apellido;RUT;Ba
   f.forEach(x=>{csv+=[lib,x.p.nombre,x.p.apellido,x.p.rut,x.p.banco,x.p.numCuenta,x.n12,x.n24,x.horas,x.sub,x.aj,x.total,"Exento",mutBase(x.p.rut),Math.round(mutValor(x.p.rut))].join(";")+"\n";});
   dl("﻿"+csv,`pagos_${est}_${mesKey()}.csv`,"text/csv;charset=utf-8;");}
 function exportarBackup(){dl(JSON.stringify(STORE),`respaldo_turnos_${new Date().toISOString().slice(0,10)}.json`,"application/json");}
-function importarBackup(inp){const f=inp.files[0];if(!f)return;const rd=new FileReader();rd.onload=e=>{try{STORE=JSON.parse(e.target.result);LIBROS.forEach(l=>{STORE[l.slug]=STORE[l.slug]||{tarifas:{},turnos:{},ajustes:{},mut:{},roster:{}};STORE[l.slug].mut=STORE[l.slug].mut||{};STORE[l.slug].roster=STORE[l.slug].roster||{};});persistir();refrescar();flash();alert("Respaldo importado.");}catch(err){alert("Archivo inválido.");}};rd.readAsText(f);}
+function importarBackup(inp){const f=inp.files[0];if(!f)return;const rd=new FileReader();rd.onload=e=>{try{STORE=JSON.parse(e.target.result);LIBROS.forEach(l=>{STORE[l.slug]=STORE[l.slug]||{tarifas:{},turnos:{},ajustes:{},mut:{},roster:{}};STORE[l.slug].mut=STORE[l.slug].mut||{};STORE[l.slug].roster=STORE[l.slug].roster||{};STORE[l.slug].extra=STORE[l.slug].extra||{};});persistir();refrescar();flash();alert("Respaldo importado.");}catch(err){alert("Archivo inválido.");}};rd.readAsText(f);}
 function dl(content,name,type){const b=new Blob([content],{type});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;a.click();}
 function normRut(r){return (r||"").toString().replace(/[.\s]/g,"").replace(/-/g,"").toUpperCase();}
 const SLUG={"MÉDICO":"medicos","TENS":"tens","EU":"eu"};
@@ -444,12 +467,12 @@ function cfgGuardada(){try{return JSON.parse(localStorage.getItem(CFGKEY));}catc
 function initNube(){const cfg=(FIREBASE_CONFIG)||cfgGuardada();if(!cfg||!cfg.databaseURL){setNubeUI("local (sin nube)");return;}if(typeof firebase==="undefined"){setNubeUI("sin internet","#dc2626");return;}
   try{if(!firebase.apps.length)firebase.initializeApp(cfg);fbRef=firebase.database().ref(CLOUD_PATH);setNubeUI("conectando…");
     fbRef.on("value",snap=>{const data=snap.val();if(!data){cloudPush(true);setNubeUI("conectado","#16a34a");return;}if(data._by===deviceId){setNubeUI("conectado","#16a34a");return;}
-      aplicandoRemoto=true;try{if(data.store){STORE=data.store;LIBROS.forEach(l=>{STORE[l.slug]=STORE[l.slug]||{tarifas:{},turnos:{},ajustes:{},mut:{},roster:{}};STORE[l.slug].mut=STORE[l.slug].mut||{};STORE[l.slug].roster=STORE[l.slug].roster||{};});localStorage.setItem(KEY,JSON.stringify(STORE));}
+      aplicandoRemoto=true;try{if(data.store){STORE=data.store;LIBROS.forEach(l=>{STORE[l.slug]=STORE[l.slug]||{tarifas:{},turnos:{},ajustes:{},mut:{},roster:{}};STORE[l.slug].mut=STORE[l.slug].mut||{};STORE[l.slug].roster=STORE[l.slug].roster||{};STORE[l.slug].extra=STORE[l.slug].extra||{};});localStorage.setItem(KEY,JSON.stringify(STORE));}
       const gset=new Set(LIBROS.map(l=>l.grupo));
       if(Array.isArray(data.nomina)&&data.nomina.some(p=>gset.has(p.grupo))){TODOS=data.nomina;localStorage.setItem(NKEY,JSON.stringify(TODOS));}
       else{setTimeout(cloudPush,400);} /* nube sin nómina válida: conservar la local y re-subirla */
       }catch(e){console.warn("remoto inválido, se conserva local",e);}
-      aplicandoRemoto=false;refrescar();setNubeUI("conectado","#16a34a");},err=>{setNubeUI("error: "+err.code,"#dc2626");});
+      aplicandoRemoto=false;autoMes();refrescar();setNubeUI("conectado","#16a34a");},err=>{setNubeUI("error: "+err.code,"#dc2626");});
     firebase.database().ref(".info/connected").on("value",s=>{if(fbRef)setNubeUI(s.val()?"conectado":"reconectando…",s.val()?"#16a34a":"");});
   }catch(e){setNubeUI("config inválida","#dc2626");}}
 function cloudPush(force){if(!fbRef||aplicandoRemoto)return;clearTimeout(pushTimer);pushTimer=setTimeout(()=>{fbRef.set({store:STORE,nomina:TODOS,_by:deviceId,_ts:Date.now()}).catch(()=>{});},force?0:600);}
@@ -457,7 +480,7 @@ function abrirNube(){const cfg=cfgGuardada();if(cfg)$("nubeCfg").value=JSON.stri
 function conectarNubeDesdeUI(){let txt=$("nubeCfg").value.trim();if(!txt){alert("Pega la configuración.");return;}try{const m=txt.match(/\{[\s\S]*\}/);const cfg=JSON.parse(m?m[0]:txt);if(!cfg.databaseURL){alert("Falta 'databaseURL'.");return;}localStorage.setItem(CFGKEY,JSON.stringify(cfg));$("nubeModal").classList.remove("show");if(fbRef){try{fbRef.off();}catch(e){}}initNube();}catch(e){alert("JSON inválido.\n"+e);}}
 function desconectarNube(){localStorage.removeItem(CFGKEY);if(fbRef){try{fbRef.off();}catch(e){}fbRef=null;}setNubeUI("local (sin nube)");$("nubeModal").classList.remove("show");}
 // PDF
-function buildPDF(rut){const p=personas().find(x=>x.rut===rut),{n12,n24}=contar(rut),t=tarifa(rut),a=ajuste(rut);const sub=n12*(+t.v12||0)+n24*(+t.v24||0),aj=valorAjuste(rut),total=sub+aj;
+function buildPDF(rut){const p=personas().find(x=>x.rut===rut),c=contar(rut),ex=contarExtra(rut),t=tarifa(rut),a=ajuste(rut),n12=c.n12+ex.e12,n24=c.n24+ex.e24;const sub=n12*(+t.v12||0)+n24*(+t.v24||0),aj=valorAjuste(rut),total=sub+aj;
   const ajTxt=(+a.cant||0)?`${a.cant} ${unidadTxt(a.unidad)}(s) × ${fmt(valorUnidad(rut,a.unidad,a.acc))} · ${a.acc==="suma"?"suma (extra)":"descuento (normal)"}`:"sin ajuste";
   const lib=LIBROS.find(l=>l.slug===est).label;const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:"mm",format:"a4"});let y=18;
   doc.setFillColor(30,58,138);doc.rect(0,0,210,16,"F");doc.setTextColor(255);doc.setFontSize(14);doc.setFont(undefined,"bold");doc.text("LIQUIDACIÓN DE TURNOS",105,10,{align:"center"});
@@ -480,10 +503,10 @@ function mostrarCompartir(rut,texto){const p=personas().find(x=>x.rut===rut);con
   $("liq").innerHTML=`<div class="top"><h2>Compartir liquidación</h2><div class="s">${p.nombre} ${p.apellido}</div></div><div class="body"><p class="legend">El PDF se descargó. Compártelo:</p><div style="display:flex;flex-direction:column;gap:8px"><a href="${wa}" target="_blank" style="text-decoration:none"><button class="b-ok" style="width:100%">🟢 WhatsApp${tel?" ("+p.telefono+")":""}</button></a><a href="${mail}" style="text-decoration:none"><button class="b-primary" style="width:100%">✉️ Correo${p.email?" ("+p.email+")":""}</button></a><button class="b-ghost" onclick="descargarPDF('${rut}')">⬇️ Descargar PDF otra vez</button></div><p class="legend" style="margin-top:10px">En computador adjunta el PDF descargado manualmente. En celular el botón Compartir envía el PDF directo.</p></div><div class="foot"><button class="b-ghost" onclick="cerrar()">Cerrar</button></div>`;$("modal").classList.add("show");}
 function guardar(){persistir();flash();}
 function flash(){const m=$("saveMsg");m.textContent="✓ Guardado";clearTimeout(window._s);window._s=setTimeout(()=>m.textContent="",1500);}
-function limpiarMes(){if(!confirm("¿Borrar el CALENDARIO (turnos, ajustes y mutualidad) de "+LIBROS.find(l=>l.slug===est).label+" en "+MESES[+$("mes").value]+" "+$("anio").value+"? La pauta y las tarifas se conservan."))return;delete E().turnos[mesKey()];delete E().ajustes[mesKey()];if(E().mut)delete E().mut[mesKey()];persistir();refrescar();}
+function limpiarMes(){if(!confirm("¿Borrar el CALENDARIO (turnos, ajustes y mutualidad) de "+LIBROS.find(l=>l.slug===est).label+" en "+MESES[+$("mes").value]+" "+$("anio").value+"? La pauta y las tarifas se conservan."))return;delete E().turnos[mesKey()];delete E().ajustes[mesKey()];if(E().mut)delete E().mut[mesKey()];if(E().extra)delete E().extra[mesKey()];persistir();refrescar();}
 function limpiarPauta(){if(!confirm("¿Borrar toda la PAUTA día/noche de "+MESES[+$("mes").value]+" "+$("anio").value+"? (No modifica el Calendario ya generado.)"))return;if(E().roster)delete E().roster[mesKey()];persistir();renderRoster();flash();}
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}
-initNube();refrescar();
+initNube();autoMes();refrescar();
 </script>
 </body>
 </html>
