@@ -109,7 +109,7 @@
 <body>
 <header>
   <h1>Sistema de Turnos · Enfermeras (EU)</h1>
-  <p>Tres libros (Médicos, TENS, EU), turnos 12/24h, pauta día/noche, ajustes, mutualidad, nube y PDF. Exento. · versión v5</p>
+  <p>Tres libros (Médicos, TENS, EU), turnos 12/24h, pauta día/noche, ajustes, mutualidad, nube y PDF. Exento. · versión v6</p>
 </header>
 <div class="books no-print" id="books" style="display:none"></div>
 <div class="topbar no-print">
@@ -252,6 +252,7 @@ function personas(){const g=LIBROS.find(l=>l.slug===est).grupo;return TODOS.filt
 })();
 function cambiarLibro(s){est=s;document.querySelectorAll(".book").forEach(b=>b.classList.toggle("active",b.classList.contains(s)));refrescar();}
 function mesKey(){return ANIO+"-"+String(MES+1).padStart(2,"0");}
+function curMes(){const m=$("mes"),a=$("anio");if(m&&m.value!=="")MES=+m.value;if(a&&a.value!=="")ANIO=+a.value;}
 function diasMes(){return new Date(ANIO,MES+1,0).getDate();}
 function turnosMes(){const k=mesKey();E().turnos[k]=E().turnos[k]||{};return E().turnos[k];}
 function ajustesMes(){const k=mesKey();E().ajustes[k]=E().ajustes[k]||{};return E().ajustes[k];}
@@ -276,7 +277,7 @@ function safe(f){try{f();}catch(e){console.warn("render",e);}}
 function refrescar(){MES=+$("mes").value;ANIO=+$("anio").value;actualizarBooks();const te=document.querySelector(".tab-extra");if(te)te.style.display=(est==="tens")?"":"none";[renderCal,renderCalBox,renderRoster,renderCfg,renderAju,renderRes,renderNom,renderExtra].forEach(safe);}
 // CALENDARIO
 function renderCal(){
-  const nd=diasMes(),y=ANIO,m=MES,tm=turnosMes(),pers=personas();
+  curMes();const nd=diasMes(),y=ANIO,m=MES,tm=turnosMes(),pers=personas();
   const exset=new Set(extraMes().map(x=>x.rut+"|"+x.dia));
   let h="<thead><tr><th class='name'>Personal</th>";
   for(let d=1;d<=nd;d++){const wd=new Date(y,m,d).getDay(),we=(wd===0||wd===6);h+=`<th class="${we?'we':''}">${d}<br>${DIASEM[wd]}</th>`;}
@@ -288,7 +289,7 @@ function renderCal(){
   h+="</tbody>";$("caltbl").innerHTML=h;
   $("caltbl").querySelectorAll("td.day").forEach(td=>td.onclick=()=>cycle(td));
   pers.forEach((p,pi)=>filaTot(pi));renderCalBox();}
-function renderCalBox(){const f=filas();const t={n12:0,n24:0,horas:0,sub:0,aj:0,total:0};f.forEach(x=>{t.n12+=x.n12;t.n24+=x.n24;t.horas+=x.horas;t.sub+=x.sub;t.aj+=x.aj;t.total+=x.total;});
+function renderCalBox(){curMes();const f=filas();const t={n12:0,n24:0,horas:0,sub:0,aj:0,total:0};f.forEach(x=>{t.n12+=x.n12;t.n24+=x.n24;t.horas+=x.horas;t.sub+=x.sub;t.aj+=x.aj;t.total+=x.total;});
   const lib=LIBROS.find(l=>l.slug===est).label;
   $("calbox").innerHTML=`<div class="cell"><div class="v">${t.n12+t.n24}</div><div class="k">Turnos del mes (${t.n12}×12h · ${t.n24}×24h)</div></div>
     <div class="cell"><div class="v">${t.horas}</div><div class="k">Horas totales</div></div>
@@ -300,11 +301,11 @@ function cycle(td){const pi=+td.dataset.pi,d=+td.dataset.d,p=personas()[pi],tm=t
   if(nxt===""){const wd=new Date(ANIO,MES,d).getDay();if(wd===0||wd===6)td.classList.add("we");}
   filaTot(pi);renderCalBox();persistir();flash();}
 function contar(rut){const r=turnosMes()[rut]||{};let n12=0,n24=0;Object.values(r).forEach(v=>{if(v==="12")n12++;else if(v==="24")n24++;});return{n12,n24};}
-function extraMes(){const k=mesKey();E().extra=E().extra||{};E().extra[k]=E().extra[k]||[];return E().extra[k];}
+function extraMes(){const k=mesKey();E().extra=E().extra||{};let v=E().extra[k];if(!Array.isArray(v)){v=(v&&typeof v==="object")?Object.values(v):[];E().extra[k]=v;}return v;}
 function contarExtra(rut){let e12=0,e24=0;extraMes().forEach(x=>{if(x.rut===rut){if(x.tipo==="24")e24++;else e12++;}});return{e12,e24};}
 function addExtra(){const dia=+$("exDia").value,rut=$("exPer").value,tipo=$("exTipo").value;if(!rut){alert("Elige la persona.");return;}extraMes().push({dia,rut,tipo});const tm=turnosMes();tm[rut]=tm[rut]||{};tm[rut][dia]=tipo;persistir();renderExtra();renderRes();renderCal();flash();}
 function delExtra(i){const arr=extraMes();const x=arr[i];arr.splice(i,1);if(x){const tm=turnosMes();if(tm[x.rut]&&tm[x.rut][x.dia]===x.tipo)delete tm[x.rut][x.dia];}persistir();renderExtra();renderRes();renderCal();flash();}
-function renderExtra(){const nd=diasMes();let od="";for(let d=1;d<=nd;d++)od+=`<option value="${d}">${d}</option>`;const ed=$("exDia");if(ed)ed.innerHTML=od;
+function renderExtra(){curMes();const nd=diasMes();let od="";for(let d=1;d<=nd;d++)od+=`<option value="${d}">${d}</option>`;const ed=$("exDia");if(ed)ed.innerHTML=od;
   const ep=$("exPer");if(ep)ep.innerHTML='<option value="">—</option>'+personas().map(p=>`<option value="${p.rut}">${p.nombre} ${p.apellido}</option>`).join("");
   const tb=$("extrabody");if(!tb)return;const arr=extraMes();
   tb.innerHTML=arr.map((x,i)=>{const p=personas().find(z=>z.rut===x.rut)||{nombre:x.rut,apellido:""};const t=tarifa(x.rut);const val=x.tipo==="24"?(+t.v24||0):(+t.v12||0);
@@ -319,7 +320,7 @@ function recomputeDia(day){const rm=rosterMes(),r=rm[day]||{},tm=turnosMes();per
 function setRoster(day,turno,rut){const rm=rosterMes();rm[day]=rm[day]||{};if(rut)rm[day][turno]=rut;else delete rm[day][turno];if(!rm[day].d&&!rm[day].n)delete rm[day];
   recomputeDia(day);persistir();renderRoster();renderCal();renderRes();flash();}
 function renderRoster(){
-  const y=ANIO,m=MES,nd=diasMes(),rm=rosterMes();
+  curMes();const y=ANIO,m=MES,nd=diasMes(),rm=rosterMes();
   const hoy=new Date(),esMesActual=(y===hoy.getFullYear()&&m===hoy.getMonth()),diaHoy=hoy.getDate();
   if($("pautaTitulo"))$("pautaTitulo").textContent="📆 "+MESES[m]+" "+y+(esMesActual?" · (mes en curso)":"");
   const DOW=["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
@@ -369,7 +370,7 @@ function setAju(rut,c,v){const am=ajustesMes();am[rut]=am[rut]||{unidad:"min",ca
 function setMut(rut,v){mutMes()[rut]=+v||0;const el=$("mut_"+rut);if(el)el.textContent=fmt(mutValor(rut));persistir();flash();}
 // RESUMEN
 function filas(){return personas().map(p=>{const c=contar(p.rut),ex=contarExtra(p.rut),t=tarifa(p.rut);const n12=c.n12,n24=c.n24;const horas=n12*12+n24*24,sub=n12*(+t.v12||0)+n24*(+t.v24||0),aj=valorAjuste(p.rut),sd=sueldo(p.rut);return{p,n12,n24,ex:ex.e12+ex.e24,horas,sub,aj,sd,total:sub+aj+sd};});}
-function renderRes(){const f=filas(),tot={n12:0,n24:0,horas:0,sub:0,aj:0,sd:0,total:0,mutb:0,mutv:0,ex:0};
+function renderRes(){curMes();const f=filas(),tot={n12:0,n24:0,horas:0,sub:0,aj:0,sd:0,total:0,mutb:0,mutv:0,ex:0};
   f.forEach(x=>{tot.n12+=x.n12;tot.n24+=x.n24;tot.ex+=x.ex;tot.horas+=x.horas;tot.sub+=x.sub;tot.aj+=x.aj;tot.sd+=x.sd;tot.total+=x.total;tot.mutb+=mutBase(x.p.rut);tot.mutv+=mutValor(x.p.rut);});
   const lib=LIBROS.find(l=>l.slug===est).label;
   $("kpis").innerHTML=`<div class="kpi"><div class="n">${fmt(tot.total)}</div><div class="l">Total a pagar · ${lib} · ${MESES[MES]} ${ANIO} <span class="exento">exento</span></div></div>
