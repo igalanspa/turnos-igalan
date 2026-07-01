@@ -139,6 +139,7 @@
   <section id="roster">
     <p class="legend">Pauta (respeta año/mes de arriba): elige la persona de <b>Día</b> y <b>Noche</b> en cada día. Día+Noche=24h. <b>Completa el Calendario 1</b> automáticamente (misma persona día y noche = 24h; distintas = 12h c/u).</p>
     <div id="pautaTitulo" style="font-weight:800;color:var(--azul-osc);font-size:16px;margin:2px 0 10px"></div>
+    <div class="no-print" style="margin:0 0 10px"><button class="b-primary" onclick="aplicarPautaTodo()">⤵ Aplicar pauta al Calendario 1</button> <span class="legend" style="margin-left:8px">Genera los turnos 12/24h en el Calendario según esta pauta. Luego puedes corregir el Calendario a mano.</span></div>
     <div class="pauta-alert" id="pautaAlert"></div>
     <div class="pautawrap" id="pautabody"></div>
   </section>
@@ -251,7 +252,8 @@ function tab(id,el){document.querySelectorAll("section").forEach(s=>s.classList.
   if(id==="cal")renderCal();if(id==="res")renderRes();if(id==="cfg")renderCfg();if(id==="aju")renderAju();if(id==="nom")renderNom();if(id==="roster")renderRoster();}
 function actualizarBooks(){$("books").innerHTML=LIBROS.map(l=>`<div class="book ${l.slug} ${l.slug===est?'active':''}" onclick="cambiarLibro('${l.slug}')">${l.label} (${TODOS.filter(p=>p.grupo===l.grupo).length})</div>`).join("");}
 function aplicarRosterMes(){const rm=rosterMes();Object.keys(rm).forEach(d=>recomputeDia(+d));}
-function refrescar(){actualizarBooks();aplicarRosterMes();renderCal();renderRoster();renderCfg();renderAju();renderRes();renderNom();}
+function aplicarPautaTodo(){aplicarRosterMes();persistir();renderCal();renderRes();renderCalBox();flash();alert("Pauta aplicada al Calendario 1. Ahora puedes ajustar el Calendario a mano si lo necesitas.");}
+function refrescar(){actualizarBooks();renderCal();renderRoster();renderCfg();renderAju();renderRes();renderNom();}
 // CALENDARIO
 function renderCal(){
   const nd=diasMes(),y=+$("anio").value,m=+$("mes").value,tm=turnosMes(),pers=personas();
