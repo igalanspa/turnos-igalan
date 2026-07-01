@@ -109,7 +109,7 @@
 <body>
 <header>
   <h1>Sistema de Turnos · TENS</h1>
-  <p>Tres libros (Médicos, TENS, EU), turnos 12/24h, pauta día/noche, ajustes, mutualidad, nube y PDF. Exento. · versión v3</p>
+  <p>Tres libros (Médicos, TENS, EU), turnos 12/24h, pauta día/noche, ajustes, mutualidad, nube y PDF. Exento. · versión v5</p>
 </header>
 <div class="books no-print" id="books" style="display:none"></div>
 <div class="topbar no-print">
@@ -168,7 +168,7 @@
       <button class="b-ok" onclick="exportarCSV()">⬇ Exportar a Excel (CSV)</button>
       <button class="b-ghost" onclick="imprimirNomina()">🖨 Imprimir nómina de pago</button>
     </div>
-    <table class="res"><thead><tr><th>Nombre</th><th class="num">T12</th><th class="num">T24</th><th class="num">Horas</th><th class="num">Cob. extra</th><th class="num">Subtotal turnos</th><th class="num">Ajuste retraso</th><th class="num">Total a pagar</th><th class="num">Base mutualidad</th><th class="num">Mutualidad 0,93%</th><th></th></tr></thead><tbody id="resbody"></tbody><tfoot id="resfoot"></tfoot></table>
+    <table class="res"><thead><tr><th>Nombre</th><th class="num">T12</th><th class="num">T24</th><th class="num">Horas</th><th class="num">Cob. extra</th><th class="num">Subtotal turnos</th><th class="num">Ajuste retraso</th><th class="num">Sueldo jefatura</th><th class="num">Total a pagar</th><th class="num">Base mutualidad</th><th class="num">Mutualidad 0,93%</th><th></th></tr></thead><tbody id="resbody"></tbody><tfoot id="resfoot"></tfoot></table>
   </section>
   <section id="nom">
     <p class="legend">Carga o actualiza la nómina: importa desde <b>Excel</b> (.xlsx/CSV) o <b>imagen</b> (OCR, con revisión), o agrega a mano.</p>
@@ -232,10 +232,12 @@ const KEY="igalan_turnos_tens_v2";
 const CLOUD_PATH="igalan_turnos_tens";
 const LIBROS=[{slug:"tens",grupo:"TENS",label:"TENS"}];
 let est="tens";
+const DEFAULT_SUELDOS={};
 let MES=new Date().getMonth(),ANIO=new Date().getFullYear();
 let STORE=cargar();
 function cargar(){let s;try{s=JSON.parse(localStorage.getItem(KEY));}catch(e){}
-  s=s||{};LIBROS.forEach(l=>{s[l.slug]=s[l.slug]||{};s[l.slug].tarifas=s[l.slug].tarifas||{};s[l.slug].turnos=s[l.slug].turnos||{};s[l.slug].ajustes=s[l.slug].ajustes||{};s[l.slug].mut=s[l.slug].mut||{};s[l.slug].roster=s[l.slug].roster||{};s[l.slug].extra=s[l.slug].extra||{};});return s;}
+  s=s||{};LIBROS.forEach(l=>{s[l.slug]=s[l.slug]||{};s[l.slug].tarifas=s[l.slug].tarifas||{};s[l.slug].turnos=s[l.slug].turnos||{};s[l.slug].ajustes=s[l.slug].ajustes||{};s[l.slug].mut=s[l.slug].mut||{};s[l.slug].roster=s[l.slug].roster||{};s[l.slug].extra=s[l.slug].extra||{};s[l.slug].sueldos=s[l.slug].sueldos||{};});
+  Object.keys(DEFAULT_SUELDOS).forEach(rut=>{if(s[est]&&s[est].sueldos[rut]===undefined)s[est].sueldos[rut]=DEFAULT_SUELDOS[rut];});return s;}
 const MUT_PCT=0.0093, BASE_HORA=29167;
 function persistir(){localStorage.setItem(KEY,JSON.stringify(STORE));cloudPush();}
 function E(){return STORE[est];}
@@ -259,6 +261,8 @@ function tarifa(rut){return E().tarifas[rut]||{v12:0,v24:0,vh:0,vhe:0};}
 function ajuste(rut){return ajustesMes()[rut]||{unidad:"min",cant:0,acc:"desc"};}
 function mutBase(rut){return +mutMes()[rut]||0;}
 function mutValor(rut){return mutBase(rut)*MUT_PCT;}
+function sueldo(rut){return +((E().sueldos||{})[rut])||0;}
+function setSueldo(rut,v){E().sueldos=E().sueldos||{};E().sueldos[rut]=+v||0;const el=$("stot_"+rut);if(el)el.textContent=fmt(sueldo(rut));renderRes();persistir();flash();}
 function fmt(n){const v=Math.round(n||0);return (v<0?"-$":"$")+Math.abs(v).toLocaleString("es-CL");}
 function tab(id,el){document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));$(id).classList.add("active");el.classList.add("active");
   if(id==="cal")renderCal();if(id==="res")renderRes();if(id==="cfg")renderCfg();if(id==="aju")renderAju();if(id==="nom")renderNom();if(id==="roster")renderRoster();if(id==="extra")renderExtra();}
@@ -269,7 +273,7 @@ let mesAuto=false,userMes=false;
 function mesesConDatos(){const set=new Set();["turnos","roster","ajustes","extra"].forEach(k=>{const o=(E()[k])||{};Object.keys(o).forEach(mk=>{const v=o[mk];const has=(k==="extra")?(Array.isArray(v)&&v.length):(v&&Object.keys(v).length);if(has)set.add(mk);});});return [...set].sort();}
 function autoMes(){if(mesAuto||userMes)return;const arr=mesesConDatos();if(!arr.length)return;const mk=mesKey();if(!arr.includes(mk)){const last=arr[arr.length-1].split("-");$("anio").value=+last[0];$("mes").value=(+last[1]-1);ANIO=+last[0];MES=(+last[1]-1);}mesAuto=true;}
 function safe(f){try{f();}catch(e){console.warn("render",e);}}
-function refrescar(){MES=MES;ANIO=ANIO;actualizarBooks();const te=document.querySelector(".tab-extra");if(te)te.style.display=(est==="tens")?"":"none";[renderCal,renderCalBox,renderRoster,renderCfg,renderAju,renderRes,renderNom,renderExtra].forEach(safe);}
+function refrescar(){MES=+$("mes").value;ANIO=+$("anio").value;actualizarBooks();const te=document.querySelector(".tab-extra");if(te)te.style.display=(est==="tens")?"":"none";[renderCal,renderCalBox,renderRoster,renderCfg,renderAju,renderRes,renderNom,renderExtra].forEach(safe);}
 // CALENDARIO
 function renderCal(){
   const nd=diasMes(),y=ANIO,m=MES,tm=turnosMes(),pers=personas();
@@ -364,9 +368,9 @@ function setAju(rut,c,v){const am=ajustesMes();am[rut]=am[rut]||{unidad:"min",ca
   const val=valorAjuste(rut);const el=$("va_"+rut);if(el){el.textContent=val?fmt(val):"—";el.className=val<0?"neg":val>0?"pos":"";}const b=$("vhb_"+rut);if(b)b.textContent=fmt(valorUnidadBaseFila(rut));renderCalBox();persistir();flash();}
 function setMut(rut,v){mutMes()[rut]=+v||0;const el=$("mut_"+rut);if(el)el.textContent=fmt(mutValor(rut));persistir();flash();}
 // RESUMEN
-function filas(){return personas().map(p=>{const c=contar(p.rut),ex=contarExtra(p.rut),t=tarifa(p.rut);const n12=c.n12,n24=c.n24;const horas=n12*12+n24*24,sub=n12*(+t.v12||0)+n24*(+t.v24||0),aj=valorAjuste(p.rut);return{p,n12,n24,ex:ex.e12+ex.e24,horas,sub,aj,total:sub+aj};});}
-function renderRes(){const f=filas(),tot={n12:0,n24:0,horas:0,sub:0,aj:0,total:0,mutb:0,mutv:0,ex:0};
-  f.forEach(x=>{tot.n12+=x.n12;tot.n24+=x.n24;tot.ex+=x.ex;tot.horas+=x.horas;tot.sub+=x.sub;tot.aj+=x.aj;tot.total+=x.total;tot.mutb+=mutBase(x.p.rut);tot.mutv+=mutValor(x.p.rut);});
+function filas(){return personas().map(p=>{const c=contar(p.rut),ex=contarExtra(p.rut),t=tarifa(p.rut);const n12=c.n12,n24=c.n24;const horas=n12*12+n24*24,sub=n12*(+t.v12||0)+n24*(+t.v24||0),aj=valorAjuste(p.rut),sd=sueldo(p.rut);return{p,n12,n24,ex:ex.e12+ex.e24,horas,sub,aj,sd,total:sub+aj+sd};});}
+function renderRes(){const f=filas(),tot={n12:0,n24:0,horas:0,sub:0,aj:0,sd:0,total:0,mutb:0,mutv:0,ex:0};
+  f.forEach(x=>{tot.n12+=x.n12;tot.n24+=x.n24;tot.ex+=x.ex;tot.horas+=x.horas;tot.sub+=x.sub;tot.aj+=x.aj;tot.sd+=x.sd;tot.total+=x.total;tot.mutb+=mutBase(x.p.rut);tot.mutv+=mutValor(x.p.rut);});
   const lib=LIBROS.find(l=>l.slug===est).label;
   $("kpis").innerHTML=`<div class="kpi"><div class="n">${fmt(tot.total)}</div><div class="l">Total a pagar · ${lib} · ${MESES[MES]} ${ANIO} <span class="exento">exento</span></div></div>
     <div class="kpi"><div class="n">${f.filter(x=>x.n12+x.n24>0).length}</div><div class="l">Personas con turnos</div></div>
@@ -374,25 +378,28 @@ function renderRes(){const f=filas(),tot={n12:0,n24:0,horas:0,sub:0,aj:0,total:0
     <div class="kpi"><div class="n ${tot.aj<0?'neg':'pos'}">${fmt(tot.aj)}</div><div class="l">Ajustes retraso</div></div>
     <div class="kpi"><div class="n">${fmt(tot.mutv)}</div><div class="l">Mutualidad 0,93% (informativo)</div></div>`;
   $("resbody").innerHTML=f.map(x=>`<tr><td>${x.p.nombre} ${x.p.apellido}</td><td class="num">${x.n12}</td><td class="num">${x.n24}</td><td class="num">${x.horas}</td><td class="num">${x.ex||"—"}</td>
-    <td class="num">${fmt(x.sub)}</td><td class="num ${x.aj<0?'neg':x.aj>0?'pos':''}">${x.aj?fmt(x.aj):"—"}</td><td class="num montotot">${fmt(x.total)}</td>
+    <td class="num">${fmt(x.sub)}</td><td class="num ${x.aj<0?'neg':x.aj>0?'pos':''}">${x.aj?fmt(x.aj):"—"}</td>
+    <td class="num"><input type="number" min="0" style="width:120px;text-align:right" value="${x.sd||""}" placeholder="0" oninput="setSueldo('${x.p.rut}',this.value)"></td>
+    <td class="num montotot">${fmt(x.total)}</td>
     <td class="num no-print"><input type="number" min="0" style="width:110px;text-align:right" value="${mutBase(x.p.rut)||""}" placeholder="0" oninput="setMut('${x.p.rut}',this.value)"></td>
     <td class="num" id="mut_${x.p.rut}">${mutValor(x.p.rut)?fmt(mutValor(x.p.rut)):"—"}</td>
     <td class="num no-print" style="white-space:nowrap"><button class="b-ghost" style="padding:5px 8px" onclick="liquidacion('${x.p.rut}')">Ver</button> <button class="b-ok" style="padding:5px 8px" onclick="compartirPDF('${x.p.rut}')">PDF</button></td></tr>`).join("");
-  $("resfoot").innerHTML=`<tr><td>TOTALES</td><td class="num">${tot.n12}</td><td class="num">${tot.n24}</td><td class="num">${tot.horas}</td><td class="num">${tot.ex}</td><td class="num">${fmt(tot.sub)}</td><td class="num">${fmt(tot.aj)}</td><td class="num">${fmt(tot.total)}</td><td class="num">${fmt(tot.mutb)}</td><td class="num">${fmt(tot.mutv)}</td><td></td></tr>`;}
-function liquidacion(rut){const p=personas().find(x=>x.rut===rut),c=contar(rut),ex=contarExtra(rut),t=tarifa(rut),a=ajuste(rut),n12=c.n12+ex.e12,n24=c.n24+ex.e24;const sub=n12*(+t.v12||0)+n24*(+t.v24||0),aj=valorAjuste(rut),total=sub+aj;
+  $("resfoot").innerHTML=`<tr><td>TOTALES</td><td class="num">${tot.n12}</td><td class="num">${tot.n24}</td><td class="num">${tot.horas}</td><td class="num">${tot.ex}</td><td class="num">${fmt(tot.sub)}</td><td class="num">${fmt(tot.aj)}</td><td class="num">${fmt(tot.sd)}</td><td class="num">${fmt(tot.total)}</td><td class="num">${fmt(tot.mutb)}</td><td class="num">${fmt(tot.mutv)}</td><td></td></tr>`;}
+function liquidacion(rut){const p=personas().find(x=>x.rut===rut),c=contar(rut),ex=contarExtra(rut),t=tarifa(rut),a=ajuste(rut),n12=c.n12+ex.e12,n24=c.n24+ex.e24;const sub=n12*(+t.v12||0)+n24*(+t.v24||0),aj=valorAjuste(rut),sd=sueldo(rut),total=sub+aj+sd;
   const ajTxt=(+a.cant||0)?`${a.cant} ${unidadTxt(a.unidad)}(s) × ${fmt(valorUnidad(rut,a.unidad,a.acc))} · ${a.acc==="suma"?"suma (extra)":"descuento (normal)"}`:"sin ajuste";
   $("liq").innerHTML=`<div class="top"><h2>${p.nombre} ${p.apellido}</h2><div class="s">${p.cargo} · RUT ${p.rut} · ${MESES[MES]} ${ANIO}</div></div>
     <div class="body"><div class="r"><span>Turnos 12h</span><span>${n12} × ${fmt(t.v12)} = ${fmt(n12*(+t.v12||0))}</span></div>
     <div class="r"><span>Turnos 24h</span><span>${n24} × ${fmt(t.v24)} = ${fmt(n24*(+t.v24||0))}</span></div>
     <div class="r"><span>Subtotal turnos</span><span>${fmt(sub)}</span></div>
     <div class="r"><span>Ajuste retraso (${ajTxt})</span><span class="${aj<0?'neg':aj>0?'pos':''}">${aj?fmt(aj):"—"}</span></div>
+    ${sd?`<div class="r"><span>Sueldo jefatura</span><span>${fmt(sd)}</span></div>`:""}
     <div class="r"><span>Banco / cuenta</span><span>${p.banco||"—"} ${p.numCuenta||""}</span></div>
     <div class="r big"><span>Total a pagar</span><span>${fmt(total)} <span class="exento">exento</span></span></div>
     <div class="r" style="font-size:12px;color:var(--gris)"><span>Mutualidad 0,93% (informativo)<br>base ${fmt(mutBase(rut))}</span><span>${fmt(mutValor(rut))}</span></div></div>
     <div class="foot"><button class="b-ghost" onclick="cerrar()">Cerrar</button><button class="b-ghost" onclick="imprimirLiq('${rut}')">🖨 Imprimir</button><button class="b-ok" onclick="descargarPDF('${rut}')">📄 PDF</button><button class="b-primary" onclick="compartirPDF('${rut}')">📤 Compartir</button></div>`;
   $("modal").classList.add("show");}
 function cerrar(){$("modal").classList.remove("show");}
-function imprimirLiq(rut){const p=personas().find(x=>x.rut===rut),c=contar(rut),ex=contarExtra(rut),t=tarifa(rut),a=ajuste(rut),n12=c.n12+ex.e12,n24=c.n24+ex.e24;const sub=n12*(+t.v12||0)+n24*(+t.v24||0),aj=valorAjuste(rut),total=sub+aj;
+function imprimirLiq(rut){const p=personas().find(x=>x.rut===rut),c=contar(rut),ex=contarExtra(rut),t=tarifa(rut),a=ajuste(rut),n12=c.n12+ex.e12,n24=c.n24+ex.e24;const sub=n12*(+t.v12||0)+n24*(+t.v24||0),aj=valorAjuste(rut),sd=sueldo(rut),total=sub+aj+sd;
   const ajTxt=(+a.cant||0)?`${a.cant} ${unidadTxt(a.unidad)}(s) × ${fmt(valorUnidad(rut,a.unidad,a.acc))} · ${a.acc==="suma"?"suma (extra)":"descuento (normal)"}`:"sin ajuste";
   const td='style="padding:8px;border:1px solid #ccc"',k='style="padding:8px;border:1px solid #ccc;background:#f1f5f9"';
   $("printArea").innerHTML=`<div style="font-family:Arial;max-width:620px;margin:0 auto;padding:30px"><h2 style="text-align:center">LIQUIDACIÓN DE TURNOS</h2>
@@ -404,6 +411,7 @@ function imprimirLiq(rut){const p=personas().find(x=>x.rut===rut),c=contar(rut),
     <tr><td ${k}><b>Turnos 24h</b></td><td ${td}>${n24} × ${fmt(t.v24)} = ${fmt(n24*(+t.v24||0))}</td></tr>
     <tr><td ${k}><b>Subtotal turnos</b></td><td ${td}>${fmt(sub)}</td></tr>
     <tr><td ${k}><b>Ajuste retraso</b></td><td ${td}>${ajTxt} = ${fmt(aj)}</td></tr>
+    ${sd?`<tr><td ${k}><b>Sueldo jefatura</b></td><td ${td}>${fmt(sd)}</td></tr>`:""}
     <tr><td ${k}><b>Banco / cuenta</b></td><td ${td}>${p.banco||"—"} ${p.tipoCuenta||""} ${p.numCuenta||""}</td></tr>
     <tr><td style="padding:10px;border:1px solid #ccc;background:#eff6ff"><b>TOTAL A PAGAR</b></td><td style="padding:10px;border:1px solid #ccc;font-size:18px;font-weight:700;color:#1e3a8a">${fmt(total)} (exento)</td></tr>
     <tr><td ${k}><b>Mutualidad 0,93%</b><br><span style="font-weight:400;font-size:11px;color:#64748b">informativo</span></td><td ${td}>base ${fmt(mutBase(rut))} × 0,93% = <b>${fmt(mutValor(rut))}</b></td></tr>
@@ -416,8 +424,8 @@ function imprimirNomina(){const f=filas().filter(x=>x.total!==0||x.n12+x.n24>0);
     <tr style="background:#1e3a8a;color:#fff"><th style="padding:7px;text-align:left">Nombre</th><th style="padding:7px;text-align:left">RUT</th><th style="padding:7px;text-align:left">Banco/cuenta</th><th style="padding:7px;text-align:right">Subtotal</th><th style="padding:7px;text-align:right">Ajuste</th><th style="padding:7px;text-align:right">Total</th></tr>
     ${rows}<tr style="background:#eff6ff;font-weight:700"><td colspan="5" style="padding:8px;border:1px solid #ccc">TOTAL</td><td style="padding:8px;border:1px solid #ccc;text-align:right">${fmt(tot)}</td></tr></table></div>`;
   window.print();setTimeout(()=>{$("printArea").innerHTML="";},500);}
-function exportarCSV(){const f=filas();let csv="Estamento;Nombre;Apellido;RUT;Banco;NumeroCuenta;Turnos12h;Turnos24h;Horas;SubtotalTurnos;AjusteRetraso;TotalPagar;Impuesto;BaseMutualidad;Mutualidad0.93%\n";const lib=LIBROS.find(l=>l.slug===est).label;
-  f.forEach(x=>{csv+=[lib,x.p.nombre,x.p.apellido,x.p.rut,x.p.banco,x.p.numCuenta,x.n12,x.n24,x.horas,x.sub,x.aj,x.total,"Exento",mutBase(x.p.rut),Math.round(mutValor(x.p.rut))].join(";")+"\n";});
+function exportarCSV(){const f=filas();let csv="Estamento;Nombre;Apellido;RUT;Banco;NumeroCuenta;Turnos12h;Turnos24h;Horas;SubtotalTurnos;AjusteRetraso;SueldoJefatura;TotalPagar;Impuesto;BaseMutualidad;Mutualidad0.93%\n";const lib=LIBROS.find(l=>l.slug===est).label;
+  f.forEach(x=>{csv+=[lib,x.p.nombre,x.p.apellido,x.p.rut,x.p.banco,x.p.numCuenta,x.n12,x.n24,x.horas,x.sub,x.aj,x.sd,x.total,"Exento",mutBase(x.p.rut),Math.round(mutValor(x.p.rut))].join(";")+"\n";});
   dl("﻿"+csv,`pagos_${est}_${mesKey()}.csv`,"text/csv;charset=utf-8;");}
 function exportarBackup(){dl(JSON.stringify(STORE),`respaldo_turnos_${new Date().toISOString().slice(0,10)}.json`,"application/json");}
 function importarBackup(inp){const f=inp.files[0];if(!f)return;const rd=new FileReader();rd.onload=e=>{try{STORE=JSON.parse(e.target.result);LIBROS.forEach(l=>{STORE[l.slug]=STORE[l.slug]||{tarifas:{},turnos:{},ajustes:{},mut:{},roster:{}};STORE[l.slug].mut=STORE[l.slug].mut||{};STORE[l.slug].roster=STORE[l.slug].roster||{};STORE[l.slug].extra=STORE[l.slug].extra||{};});persistir();refrescar();flash();alert("Respaldo importado.");}catch(err){alert("Archivo inválido.");}};rd.readAsText(f);}
@@ -471,7 +479,7 @@ function cfgGuardada(){try{return JSON.parse(localStorage.getItem(CFGKEY));}catc
 function initNube(){const cfg=(FIREBASE_CONFIG)||cfgGuardada();if(!cfg||!cfg.databaseURL){setNubeUI("local (sin nube)");return;}if(typeof firebase==="undefined"){setNubeUI("sin internet","#dc2626");return;}
   try{if(!firebase.apps.length)firebase.initializeApp(cfg);fbRef=firebase.database().ref(CLOUD_PATH);setNubeUI("conectando…");
     fbRef.on("value",snap=>{const data=snap.val();if(!data){cloudPush(true);setNubeUI("conectado","#16a34a");return;}if(data._by===deviceId){setNubeUI("conectado","#16a34a");return;}
-      aplicandoRemoto=true;try{if(data.store){STORE=data.store;LIBROS.forEach(l=>{STORE[l.slug]=STORE[l.slug]||{tarifas:{},turnos:{},ajustes:{},mut:{},roster:{}};STORE[l.slug].mut=STORE[l.slug].mut||{};STORE[l.slug].roster=STORE[l.slug].roster||{};STORE[l.slug].extra=STORE[l.slug].extra||{};});localStorage.setItem(KEY,JSON.stringify(STORE));}
+      aplicandoRemoto=true;try{if(data.store){STORE=data.store;LIBROS.forEach(l=>{STORE[l.slug]=STORE[l.slug]||{tarifas:{},turnos:{},ajustes:{},mut:{},roster:{}};STORE[l.slug].mut=STORE[l.slug].mut||{};STORE[l.slug].roster=STORE[l.slug].roster||{};STORE[l.slug].extra=STORE[l.slug].extra||{};STORE[l.slug].sueldos=STORE[l.slug].sueldos||{};});Object.keys(DEFAULT_SUELDOS).forEach(rut=>{if(STORE[est]&&STORE[est].sueldos[rut]===undefined){STORE[est].sueldos[rut]=DEFAULT_SUELDOS[rut];setTimeout(cloudPush,600);}});localStorage.setItem(KEY,JSON.stringify(STORE));}
       const gset=new Set(LIBROS.map(l=>l.grupo));
       if(Array.isArray(data.nomina)&&data.nomina.some(p=>gset.has(p.grupo))){TODOS=data.nomina;localStorage.setItem(NKEY,JSON.stringify(TODOS));}
       else{setTimeout(cloudPush,400);} /* nube sin nómina válida: conservar la local y re-subirla */
@@ -484,7 +492,7 @@ function abrirNube(){const cfg=cfgGuardada();if(cfg)$("nubeCfg").value=JSON.stri
 function conectarNubeDesdeUI(){let txt=$("nubeCfg").value.trim();if(!txt){alert("Pega la configuración.");return;}try{const m=txt.match(/\{[\s\S]*\}/);const cfg=JSON.parse(m?m[0]:txt);if(!cfg.databaseURL){alert("Falta 'databaseURL'.");return;}localStorage.setItem(CFGKEY,JSON.stringify(cfg));$("nubeModal").classList.remove("show");if(fbRef){try{fbRef.off();}catch(e){}}initNube();}catch(e){alert("JSON inválido.\n"+e);}}
 function desconectarNube(){localStorage.removeItem(CFGKEY);if(fbRef){try{fbRef.off();}catch(e){}fbRef=null;}setNubeUI("local (sin nube)");$("nubeModal").classList.remove("show");}
 // PDF
-function buildPDF(rut){const p=personas().find(x=>x.rut===rut),c=contar(rut),ex=contarExtra(rut),t=tarifa(rut),a=ajuste(rut),n12=c.n12+ex.e12,n24=c.n24+ex.e24;const sub=n12*(+t.v12||0)+n24*(+t.v24||0),aj=valorAjuste(rut),total=sub+aj;
+function buildPDF(rut){const p=personas().find(x=>x.rut===rut),c=contar(rut),ex=contarExtra(rut),t=tarifa(rut),a=ajuste(rut),n12=c.n12+ex.e12,n24=c.n24+ex.e24;const sub=n12*(+t.v12||0)+n24*(+t.v24||0),aj=valorAjuste(rut),sd=sueldo(rut),total=sub+aj+sd;
   const ajTxt=(+a.cant||0)?`${a.cant} ${unidadTxt(a.unidad)}(s) × ${fmt(valorUnidad(rut,a.unidad,a.acc))} · ${a.acc==="suma"?"suma (extra)":"descuento (normal)"}`:"sin ajuste";
   const lib=LIBROS.find(l=>l.slug===est).label;const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:"mm",format:"a4"});let y=18;
   doc.setFillColor(30,58,138);doc.rect(0,0,210,16,"F");doc.setTextColor(255);doc.setFontSize(14);doc.setFont(undefined,"bold");doc.text("LIQUIDACIÓN DE TURNOS",105,10,{align:"center"});
@@ -492,7 +500,7 @@ function buildPDF(rut){const p=personas().find(x=>x.rut===rut),c=contar(rut),ex=
   const fila=(k,v)=>{doc.setFont(undefined,"bold");doc.setFillColor(241,245,249);doc.rect(20,y-5,60,8,"F");doc.text(k,22,y);doc.setFont(undefined,"normal");doc.text(String(v),84,y);y+=9;};
   fila("Nombre",`${p.nombre} ${p.apellido}`);fila("RUT",p.rut);fila("Cargo",p.cargo);
   fila("Turnos 12h",`${n12} × ${fmt(t.v12)} = ${fmt(n12*(+t.v12||0))}`);fila("Turnos 24h",`${n24} × ${fmt(t.v24)} = ${fmt(n24*(+t.v24||0))}`);
-  fila("Horas",`${n12*12+n24*24} h`);fila("Subtotal turnos",fmt(sub));fila("Ajuste retraso",`${ajTxt} = ${fmt(aj)}`);fila("Banco / cuenta",`${p.banco||"—"} ${p.tipoCuenta||""} ${p.numCuenta||""}`);
+  fila("Horas",`${n12*12+n24*24} h`);fila("Subtotal turnos",fmt(sub));fila("Ajuste retraso",`${ajTxt} = ${fmt(aj)}`);if(sd)fila("Sueldo jefatura",fmt(sd));fila("Banco / cuenta",`${p.banco||"—"} ${p.tipoCuenta||""} ${p.numCuenta||""}`);
   y+=2;doc.setFillColor(239,246,255);doc.rect(20,y-5,170,11,"F");doc.setFont(undefined,"bold");doc.setTextColor(30,58,138);doc.setFontSize(13);doc.text("TOTAL A PAGAR (exento)",22,y+1);doc.text(fmt(total),188,y+1,{align:"right"});y+=14;
   doc.setTextColor(100);doc.setFontSize(9);doc.setFont(undefined,"normal");doc.text(`Mutualidad 0,93% (informativo): base ${fmt(mutBase(rut))} = ${fmt(mutValor(rut))}`,22,y);y+=10;
   doc.setTextColor(120);doc.text("____________________",30,y+14);doc.text("Recibí conforme",40,y+19);doc.text("____________________",125,y+14);doc.text("Autoriza pago",140,y+19);
