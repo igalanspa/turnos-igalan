@@ -1,4 +1,7 @@
-const CACHE="igalan-turnos-v1";const CORE=["https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js","https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"];
-self.addEventListener("install",e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE).catch(()=>{})));});
-self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim();});
-self.addEventListener("fetch",e=>{const r=e.request;if(r.method!=="GET")return;if(r.url.includes("firebaseio.com")||r.url.includes("firebasedatabase.app")||r.url.includes("google"))return;e.respondWith(caches.match(r).then(hit=>hit||fetch(r).then(resp=>{const copy=resp.clone();caches.open(CACHE).then(c=>c.put(r,copy).catch(()=>{}));return resp;}).catch(()=>hit)));});
+// Kill-switch: limpia cachés viejas y se desinstala, forzando recarga de la última versión
+self.addEventListener("install",()=>self.skipWaiting());
+self.addEventListener("activate",e=>{e.waitUntil((async()=>{
+  try{const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)));}catch(_){}
+  try{await self.registration.unregister();}catch(_){}
+  try{const cs=await self.clients.matchAll({type:"window"});cs.forEach(c=>c.navigate(c.url));}catch(_){}
+})());});
