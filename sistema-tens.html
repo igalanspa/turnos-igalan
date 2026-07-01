@@ -250,7 +250,8 @@ function fmt(n){const v=Math.round(n||0);return (v<0?"-$":"$")+Math.abs(v).toLoc
 function tab(id,el){document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));$(id).classList.add("active");el.classList.add("active");
   if(id==="cal")renderCal();if(id==="res")renderRes();if(id==="cfg")renderCfg();if(id==="aju")renderAju();if(id==="nom")renderNom();if(id==="roster")renderRoster();}
 function actualizarBooks(){$("books").innerHTML=LIBROS.map(l=>`<div class="book ${l.slug} ${l.slug===est?'active':''}" onclick="cambiarLibro('${l.slug}')">${l.label} (${TODOS.filter(p=>p.grupo===l.grupo).length})</div>`).join("");}
-function refrescar(){actualizarBooks();renderCal();renderRoster();renderCfg();renderAju();renderRes();renderNom();}
+function aplicarRosterMes(){const rm=rosterMes();Object.keys(rm).forEach(d=>recomputeDia(+d));}
+function refrescar(){actualizarBooks();aplicarRosterMes();renderCal();renderRoster();renderCfg();renderAju();renderRes();renderNom();}
 // CALENDARIO
 function renderCal(){
   const nd=diasMes(),y=+$("anio").value,m=+$("mes").value,tm=turnosMes(),pers=personas();
