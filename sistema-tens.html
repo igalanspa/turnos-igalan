@@ -248,7 +248,7 @@ function mutBase(rut){return +mutMes()[rut]||0;}
 function mutValor(rut){return mutBase(rut)*MUT_PCT;}
 function fmt(n){const v=Math.round(n||0);return (v<0?"-$":"$")+Math.abs(v).toLocaleString("es-CL");}
 function tab(id,el){document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));$(id).classList.add("active");el.classList.add("active");
-  if(id==="res")renderRes();if(id==="cfg")renderCfg();if(id==="aju")renderAju();if(id==="nom")renderNom();if(id==="roster")renderRoster();}
+  if(id==="cal")renderCal();if(id==="res")renderRes();if(id==="cfg")renderCfg();if(id==="aju")renderAju();if(id==="nom")renderNom();if(id==="roster")renderRoster();}
 function actualizarBooks(){$("books").innerHTML=LIBROS.map(l=>`<div class="book ${l.slug} ${l.slug===est?'active':''}" onclick="cambiarLibro('${l.slug}')">${l.label} (${TODOS.filter(p=>p.grupo===l.grupo).length})</div>`).join("");}
 function refrescar(){actualizarBooks();renderCal();renderRoster();renderCfg();renderAju();renderRes();renderNom();}
 // CALENDARIO
@@ -441,8 +441,12 @@ function cfgGuardada(){try{return JSON.parse(localStorage.getItem(CFGKEY));}catc
 function initNube(){const cfg=(FIREBASE_CONFIG)||cfgGuardada();if(!cfg||!cfg.databaseURL){setNubeUI("local (sin nube)");return;}if(typeof firebase==="undefined"){setNubeUI("sin internet","#dc2626");return;}
   try{if(!firebase.apps.length)firebase.initializeApp(cfg);fbRef=firebase.database().ref(CLOUD_PATH);setNubeUI("conectando…");
     fbRef.on("value",snap=>{const data=snap.val();if(!data){cloudPush(true);setNubeUI("conectado","#16a34a");return;}if(data._by===deviceId){setNubeUI("conectado","#16a34a");return;}
-      aplicandoRemoto=true;if(data.store){STORE=data.store;LIBROS.forEach(l=>{STORE[l.slug]=STORE[l.slug]||{tarifas:{},turnos:{},ajustes:{},mut:{},roster:{}};STORE[l.slug].mut=STORE[l.slug].mut||{};STORE[l.slug].roster=STORE[l.slug].roster||{};});localStorage.setItem(KEY,JSON.stringify(STORE));}
-      if(data.nomina){TODOS=data.nomina;localStorage.setItem(NKEY,JSON.stringify(TODOS));}aplicandoRemoto=false;refrescar();setNubeUI("conectado","#16a34a");},err=>{setNubeUI("error: "+err.code,"#dc2626");});
+      aplicandoRemoto=true;try{if(data.store){STORE=data.store;LIBROS.forEach(l=>{STORE[l.slug]=STORE[l.slug]||{tarifas:{},turnos:{},ajustes:{},mut:{},roster:{}};STORE[l.slug].mut=STORE[l.slug].mut||{};STORE[l.slug].roster=STORE[l.slug].roster||{};});localStorage.setItem(KEY,JSON.stringify(STORE));}
+      const gset=new Set(LIBROS.map(l=>l.grupo));
+      if(Array.isArray(data.nomina)&&data.nomina.some(p=>gset.has(p.grupo))){TODOS=data.nomina;localStorage.setItem(NKEY,JSON.stringify(TODOS));}
+      else{setTimeout(cloudPush,400);} /* nube sin nómina válida: conservar la local y re-subirla */
+      }catch(e){console.warn("remoto inválido, se conserva local",e);}
+      aplicandoRemoto=false;refrescar();setNubeUI("conectado","#16a34a");},err=>{setNubeUI("error: "+err.code,"#dc2626");});
     firebase.database().ref(".info/connected").on("value",s=>{if(fbRef)setNubeUI(s.val()?"conectado":"reconectando…",s.val()?"#16a34a":"");});
   }catch(e){setNubeUI("config inválida","#dc2626");}}
 function cloudPush(force){if(!fbRef||aplicandoRemoto)return;clearTimeout(pushTimer);pushTimer=setTimeout(()=>{fbRef.set({store:STORE,nomina:TODOS,_by:deviceId,_ts:Date.now()}).catch(()=>{});},force?0:600);}
