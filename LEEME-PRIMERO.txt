@@ -1,0 +1,6 @@
+SISTEMA DE TURNOS Y PAGOS · IGALAN
+1) Descomprime esta carpeta.
+2) Para usarlo YA: doble clic en index.html (o ABRIR-Turnos).
+3) Elige servicio: Médicos, TENS o EU.
+Funciona en Safari, Chrome, Edge y en Mac/Windows/iPhone/Android.
+La NUBE (datos compartidos en vivo) solo funciona abriendo el ENLACE web publicado (Netlify), no como archivo local.

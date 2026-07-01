@@ -1,0 +1,15 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Turnos y Pagos · IGALAN</title><meta name="theme-color" content="#1e3a8a"><link rel="manifest" href="manifest-portada.json"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes">
+<style>*{box-sizing:border-box}body{margin:0;font-family:'Segoe UI',Roboto,Arial,sans-serif;background:#0f1f3d}
+.hero{background:linear-gradient(135deg,#1e3a8a,#1d4ed8);color:#fff;padding:40px 24px 56px;text-align:center}.hero h1{margin:0;font-size:26px}.hero p{margin:8px 0 0;opacity:.9;font-size:14px}
+.wrap{max-width:920px;margin:-32px auto 0;padding:0 20px 40px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
+.card{background:#fff;border-radius:16px;padding:22px;box-shadow:0 8px 24px rgba(0,0,0,.18);text-decoration:none;color:inherit;display:block;border-top:6px solid #ccc;transition:transform .12s}.card:hover{transform:translateY(-3px)}
+.card.med{border-top-color:#d97706}.card.tens{border-top-color:#16a34a}.card.eu{border-top-color:#3b82f6}.card .ico{font-size:34px}.card h2{margin:8px 0 4px;font-size:19px;color:#1e3a8a}.card p{margin:0;font-size:12.5px;color:#475569}
+.foot{color:#cbd5e1;text-align:center;font-size:12px;margin-top:26px;line-height:1.6}</style></head><body>
+<div class="hero"><h1>Sistema de Turnos y Pagos · IGALAN</h1><p>Elige el servicio</p></div>
+<div class="wrap"><div class="grid">
+<a class="card med" href="sistema-medicos.html"><div class="ico">🩺</div><h2>Médicos</h2><p>Calendario, pauta, tarifas, ajustes, mutualidad, PDF.</p></a>
+<a class="card tens" href="sistema-tens.html"><div class="ico">🧑‍⚕️</div><h2>TENS</h2><p>Calendario, pauta, tarifas, ajustes, mutualidad, PDF.</p></a>
+<a class="card eu" href="sistema-eu.html"><div class="ico">👩‍⚕️</div><h2>Enfermeras (EU)</h2><p>Calendario, pauta, tarifas, ajustes, mutualidad, PDF.</p></a>
+</div><div class="foot">Cada servicio guarda sus datos por separado y se sincroniza en la nube.</div></div>
+<script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}</script>
+</body></html>
