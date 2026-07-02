@@ -109,7 +109,7 @@
 <body>
 <header>
   <h1>Sistema de Turnos · TENS</h1>
-  <p>Tres libros (Médicos, TENS, EU), turnos 12/24h, pauta día/noche, ajustes, mutualidad, nube y PDF. Exento. · versión v15</p>
+  <p>Tres libros (Médicos, TENS, EU), turnos 12/24h, pauta día/noche, ajustes, mutualidad, nube y PDF. Exento. · versión v16</p>
 </header>
 <div class="books no-print" id="books" style="display:none"></div>
 <div class="topbar no-print">
@@ -296,13 +296,24 @@ function renderCal(){
   h+="</tbody>";$("caltbl").innerHTML=h;
   $("caltbl").querySelectorAll("td.day").forEach(td=>td.onclick=()=>cycle(td));
   pers.forEach((p,pi)=>filaTot(pi));renderCalBox();}
+function totalesMes(){var reg={n12:0,n24:0},ex={e12:0,e24:0};personas().forEach(function(p){try{var c=contar(p.rut),e=contarExtra(p.rut);reg.n12+=c.n12;reg.n24+=c.n24;ex.e12+=e.e12;ex.e24+=e.e24;}catch(_e){}});
+  var n12=reg.n12+ex.e12,n24=reg.n24+ex.e24;
+  var horas=n12*12+n24*24,regHoras=reg.n12*12+reg.n24*24,exHoras=ex.e12*12+ex.e24*24;
+  var dias=diasMes(),baseTurnos=dias*2,baseHoras=baseTurnos*12;
+  return {n12:n12,n24:n24,regN:reg.n12+reg.n24,exN:ex.e12+ex.e24,horas:horas,regHoras:regHoras,exHoras:exHoras,dias:dias,baseTurnos:baseTurnos,baseHoras:baseHoras};}
+function reconTxt(){var m=totalesMes();var dif=m.regHoras-m.baseHoras;var difTxt=dif===0?"cubre justo la base":(dif>0?("+"+dif+" h sobre la base"):(dif+" h bajo la base — falta cubrir días"));
+  return `📋 Cobertura de <b>${MESES[MES]} ${ANIO}</b> · Días: <b>${m.dias}</b> · Base esperada (2 turnos de 12h por día): <b>${m.baseTurnos} turnos = ${m.baseHoras} h</b>`
+    +` &nbsp;|&nbsp; Pauta/Calendario: <b>${m.regN} turnos = ${m.regHoras} h</b> (${difTxt})`
+    +` &nbsp;|&nbsp; Cobertura extra: <b>+${m.exN} turnos = +${m.exHoras} h</b>`
+    +` &nbsp;|&nbsp; <b>TOTAL: ${m.n12+m.n24} turnos = ${m.horas} h</b>`;}
 function renderCalBox(){curMes();const f=filas();const t={n12:0,n24:0,horas:0,sub:0,aj:0,total:0};f.forEach(x=>{t.n12+=x.n12;t.n24+=x.n24;t.horas+=x.horas;t.sub+=x.sub;t.aj+=x.aj;t.total+=x.total;});
-  const lib=LIBROS.find(l=>l.slug===est).label;
-  $("calbox").innerHTML=`<div class="cell"><div class="v">${t.n12+t.n24}</div><div class="k">Turnos del mes (${t.n12}×12h · ${t.n24}×24h)</div></div>
-    <div class="cell"><div class="v">${t.horas}</div><div class="k">Horas totales</div></div>
+  const lib=LIBROS.find(l=>l.slug===est).label;const m=totalesMes();
+  $("calbox").innerHTML=`<div class="cell"><div class="v">${t.n12+t.n24}</div><div class="k">Turnos del mes (${t.n12}×12h · ${t.n24}×24h)${m.exN?` · incluye ${m.exN} cobertura extra`:""}</div></div>
+    <div class="cell"><div class="v">${t.horas}</div><div class="k">Horas totales${m.exHoras?` · extra ${m.exHoras} h`:""}</div></div>
     <div class="cell"><div class="v">${fmt(t.sub)}</div><div class="k">Subtotal turnos</div></div>
     <div class="cell"><div class="v ${t.aj<0?'neg':t.aj>0?'pos':''}">${fmt(t.aj)}</div><div class="k">Ajustes retraso</div></div>
-    <div class="cell main"><div class="v">${fmt(t.total)}</div><div class="k">TOTAL DEL MES · ${lib} · ${MESES[MES]} ${ANIO} (exento)</div></div>`;}
+    <div class="cell main"><div class="v">${fmt(t.total)}</div><div class="k">TOTAL DEL MES · ${lib} · ${MESES[MES]} ${ANIO} (exento)</div></div>
+    <div class="cell" style="flex-basis:100%;background:#f8fafc;color:#334155;font-size:12px;text-align:left">${reconTxt()}</div>`;}
 function cycle(td){const pi=+td.dataset.pi,d=+td.dataset.d,p=personas()[pi],tm=turnosMes();tm[p.rut]=tm[p.rut]||{};const cur=tm[p.rut][d]||"",nxt=cur===""?"12":cur==="12"?"24":"";
   if(nxt==="")delete tm[p.rut][d];else tm[p.rut][d]=nxt;
   persistir();renderCal();renderRes();flash();}
@@ -382,9 +393,10 @@ function renderRes(){curMes();const f=filas(),tot={n12:0,n24:0,horas:0,sub:0,aj:
   const lib=LIBROS.find(l=>l.slug===est).label;
   $("kpis").innerHTML=`<div class="kpi"><div class="n">${fmt(tot.total)}</div><div class="l">Total a pagar · ${lib} · ${MESES[MES]} ${ANIO} <span class="exento">exento</span></div></div>
     <div class="kpi"><div class="n">${f.filter(x=>x.n12+x.n24>0).length}</div><div class="l">Personas con turnos</div></div>
-    <div class="kpi"><div class="n">${tot.n12+tot.n24}</div><div class="l">Turnos (${tot.n12}×12h · ${tot.n24}×24h)</div></div>
+    <div class="kpi"><div class="n">${tot.n12+tot.n24}</div><div class="l">Turnos (${tot.n12}×12h · ${tot.n24}×24h) · ${tot.horas} h${totalesMes().exHoras?` · extra ${totalesMes().exHoras} h`:""}</div></div>
     <div class="kpi"><div class="n ${tot.aj<0?'neg':'pos'}">${fmt(tot.aj)}</div><div class="l">Ajustes retraso</div></div>
-    <div class="kpi"><div class="n">${fmt(tot.mutv)}</div><div class="l">Mutualidad 0,93% (informativo)</div></div>`;
+    <div class="kpi"><div class="n">${fmt(tot.mutv)}</div><div class="l">Mutualidad 0,93% (informativo)</div></div>
+    <div class="kpi" style="flex-basis:100%;text-align:left"><div class="l" style="font-size:12px;color:#334155">${reconTxt()}</div></div>`;
   $("resbody").innerHTML=f.map(x=>`<tr><td>${x.p.nombre} ${x.p.apellido}</td><td class="num">${x.n12}</td><td class="num">${x.n24}</td><td class="num">${x.horas}</td><td class="num">${x.ex||"—"}</td>
     <td class="num">${fmt(x.sub)}</td><td class="num ${x.aj<0?'neg':x.aj>0?'pos':''}">${x.aj?fmt(x.aj):"—"}</td>
     <td class="num"><input type="number" min="0" style="width:120px;text-align:right" value="${x.sd||""}" placeholder="0" oninput="setSueldo('${x.p.rut}',this.value)"></td>
