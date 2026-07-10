@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Rotaciones y Pagos · EU / TENS / Médicos</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#0f172a; --panel:#ffffff; --ink:#0f172a; --muted:#64748b;
+    --line:#e2e8f0; --soft:#f8fafc;
+    --eu:#2563eb; --tens:#0d9488; --med:#7c3aed;
+    --ok:#16a34a; --warn:#d97706; --bad:#dc2626;
+    --accent:#2563eb;
+    --shadow:0 1px 3px rgba(15,23,42,.08),0 8px 24px rgba(15,23,42,.06);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#eef2f7;color:var(--ink);font-size:14px}
+  header{background:linear-gradient(120deg,#0f172a,#1e3a8a);color:#fff;padding:18px 22px}
+  header h1{margin:0;font-size:19px;font-weight:700;letter-spacing:.2px}
+  header p{margin:4px 0 0;font-size:12.5px;color:#cbd5e1}
+  .wrap{max-width:1180px;margin:0 auto;padding:18px}
+  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .bar-left{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  label.fld{font-size:11px;color:var(--muted);display:block;margin-bottom:3px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+  input,select{font-family:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+  input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  button{font-family:inherit;font-size:13px;font-weight:600;padding:8px 13px;border:none;border-radius:8px;cursor:pointer;transition:.15s}
+  button:active{transform:translateY(1px)}
+  .btn{background:var(--accent);color:#fff}
+  .btn:hover{filter:brightness(1.07)}
+  .btn-ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .btn-ghost:hover{background:var(--soft)}
+  .btn-sm{padding:5px 9px;font-size:12px}
+  .wa{background:#25D366;color:#fff}
+  .ml{background:#334155;color:#fff}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);margin-bottom:16px;overflow:hidden}
+  .card h2{margin:0;padding:13px 16px;font-size:14px;border-bottom:1px solid var(--line);background:var(--soft);display:flex;justify-content:space-between;align-items:center}
+  .card .body{padding:16px}
+  .grid-form{display:grid;grid-template-columns:1.4fr .9fr .9fr 1fr 1.1fr auto;gap:10px;align-items:end}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 15px}
+  .kpi .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:600}
+  .kpi .val{font-size:22px;font-weight:800;margin-top:5px}
+  .kpi.eu{border-top:3px solid var(--eu)} .kpi.tens{border-top:3px solid var(--tens)} .kpi.med{border-top:3px solid var(--med)}
+  .kpi.tot{border-top:3px solid var(--ink)}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:9px 11px;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);background:var(--soft)}
+  tbody tr:hover{background:#f9fbff}
+  .estGroup td{background:#eef2ff;font-weight:700;font-size:12px;color:#1e293b;text-transform:uppercase;letter-spacing:.5px}
+  .tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}
+  .tag.eu{background:#dbeafe;color:#1d4ed8}.tag.tens{background:#ccfbf1;color:#0f766e}.tag.med{background:#ede9fe;color:#6d28d9}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700}
+  .pill.pend{background:#fef3c7;color:#92400e}
+  .pill.sent{background:#dbeafe;color:#1e40af}
+  .pill.conf{background:#dcfce7;color:#166534}
+  .cuadre-ok{color:var(--ok);font-weight:700}
+  .cuadre-bad{color:var(--bad);font-weight:700}
+  .num{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+  .actions{display:flex;gap:5px;flex-wrap:wrap}
+  .doc-link{font-size:12px;color:var(--accent);text-decoration:none;font-weight:600}
+  .doc-link:hover{text-decoration:underline}
+  .empty{padding:34px;text-align:center;color:var(--muted)}
+  .foot{font-size:11.5px;color:var(--muted);text-align:center;padding:10px}
+  .rcv-input{width:110px}
+  dialog{border:none;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.3);padding:0;max-width:440px;width:92%}
+  dialog::backdrop{background:rgba(15,23,42,.45)}
+  .dlg-h{padding:14px 18px;border-bottom:1px solid var(--line);font-weight:700}
+  .dlg-b{padding:18px}
+  .dlg-f{padding:12px 18px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px}
+  .msgbox{width:100%;min-height:120px;font-family:inherit;font-size:13px;padding:10px;border:1px solid var(--line);border-radius:8px;resize:vertical}
+  .hint{font-size:11.5px;color:var(--muted);margin-top:4px}
+  @media(max-width:820px){.grid-form{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Sistema de Rotaciones y Pagos</h1>
+  <p>Estamentos EU · TENS · Médicos — envío de valor, confirmación de recepción, archivo de boletas/facturas y cuadre mensual</p>
+</header>
+
+<div class="wrap">
+
+  <div class="bar">
+    <div class="bar-left">
+      <div>
+        <label class="fld">Período (mes)</label>
+        <input type="month" id="mes">
+      </div>
+      <div>
+        <label class="fld">Método de envío por defecto</label>
+        <select id="metodoDef">
+          <option value="whatsapp">WhatsApp</option>
+          <option value="mail">Correo</option>
+        </select>
+      </div>
+    </div>
+    <div class="bar-left">
+      <button class="btn-ghost btn-sm" id="btnCSV">Exportar CSV</button>
+      <button class="btn-ghost btn-sm" id="btnBackup">Respaldo JSON</button>
+      <button class="btn-ghost btn-sm" id="btnRestore">Restaurar</button>
+      <input type="file" id="fileRestore" accept="application/json" hidden>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="card">
+    <h2>Resumen del período · <span id="mesLbl"></span></h2>
+    <div class="body">
+      <div class="kpis">
+        <div class="kpi eu"><div class="lbl">Total EU</div><div class="val" id="kEU">$0</div></div>
+        <div class="kpi tens"><div class="lbl">Total TENS</div><div class="val" id="kTENS">$0</div></div>
+        <div class="kpi med"><div class="lbl">Total Médicos</div><div class="val" id="kMED">$0</div></div>
+        <div class="kpi tot"><div class="lbl">Total general</div><div class="val" id="kTOT">$0</div></div>
+      </div>
+      <div class="kpis" style="margin-top:12px">
+        <div class="kpi"><div class="lbl">Personas</div><div class="val" id="kPers">0</div></div>
+        <div class="kpi"><div class="lbl">Enviados</div><div class="val" id="kSent">0</div></div>
+        <div class="kpi"><div class="lbl">Recepción confirmada</div><div class="val" id="kConf">0</div></div>
+        <div class="kpi"><div class="lbl">Cuadra / Diferencia</div><div class="val" id="kCuad">0 / 0</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alta -->
+  <div class="card">
+    <h2>Agregar persona</h2>
+    <div class="body">
+      <div class="grid-form">
+        <div><label class="fld">Nombre</label><input id="fNom" placeholder="Nombre y apellido"></div>
+        <div><label class="fld">Estamento</label>
+          <select id="fEst"><option value="EU">EU</option><option value="TENS">TENS</option><option value="Médicos">Médicos</option></select>
+        </div>
+        <div><label class="fld">Valor rotación</label><input id="fVal" type="number" min="0" placeholder="0"></div>
+        <div><label class="fld">WhatsApp (+569...)</label><input id="fTel" placeholder="+569 1234 5678"></div>
+        <div><label class="fld">Correo</label><input id="fMail" type="email" placeholder="correo@dominio.cl"></div>
+        <div><button class="btn" id="btnAdd">+ Agregar</button></div>
+      </div>
+      <div class="hint">El valor de rotación es lo que se enviará a cada persona y con lo que se hará el cuadre contra el pago recibido.</div>
+    </div>
+  </div>
+
+  <!-- Adjuntar nómina desde Excel -->
+  <div class="card">
+    <h2>Adjuntar nómina desde Excel</h2>
+    <div class="body">
+      <div class="bar-left" style="align-items:center">
+        <label class="btn" style="cursor:pointer">📎 Adjuntar Excel / CSV
+          <input type="file" id="fileNomina" accept=".xlsx,.xls,.csv" hidden>
+        </label>
+        <button class="btn-ghost" id="btnPlantilla">Descargar plantilla Excel</button>
+        <button class="btn-ghost" id="btnEjemplo">Cargar nómina de ejemplo</button>
+        <label style="display:flex;gap:6px;align-items:center;font-size:12.5px;color:var(--muted)">
+          <input type="checkbox" id="chkReemplazar"> reemplazar la nómina del mes
+        </label>
+        <span id="importInfo" style="font-size:12.5px;color:var(--muted)"></span>
+      </div>
+      <div class="hint">Columnas esperadas: <strong>Nombre</strong>, <strong>Estamento</strong> (EU / TENS / Médicos), <strong>Valor</strong>, <strong>WhatsApp</strong>, <strong>Correo</strong>. Se importa al período seleccionado. Descarga la plantilla si no la tienes.</div>
+    </div>
+  </div>
+
+  <!-- Tabla -->
+  <div class="card">
+    <h2>Detalle por estamento
+      <span style="font-weight:400;font-size:12px;color:var(--muted)">Envío → confirmación → cuadre</span>
+    </h2>
+    <div style="overflow-x:auto">
+      <table id="tabla">
+        <thead>
+          <tr>
+            <th>Persona</th><th>Estamento</th><th class="num">Valor rotación</th>
+            <th>Estado</th><th>Enviar</th><th>Recepción / valor recibido</th>
+            <th>Cuadre</th><th>Documento</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+        <tfoot>
+          <tr style="font-weight:800;background:var(--soft)">
+            <td colspan="2">TOTAL GENERAL</td>
+            <td class="num" id="fTotal">$0</td>
+            <td colspan="6"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <div class="foot">Los datos se guardan localmente en este navegador (localStorage). Usa “Respaldo JSON” para guardar una copia externa.</div>
+  </div>
+
+  <!-- Planilla total de pagos (integrada) -->
+  <div class="card">
+    <h2>Planilla total de pagos (consolidado)
+      <label style="font-weight:400;font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center">
+        <input type="checkbox" id="chkTodos"> incluir todos los meses
+      </label>
+    </h2>
+    <div style="overflow-x:auto">
+      <table id="tablaPago">
+        <thead>
+          <tr>
+            <th>Período</th><th>Persona</th><th>Estamento</th>
+            <th class="num">Valor rotación</th><th class="num">Valor recibido</th>
+            <th class="num">Diferencia</th><th>Estado pago</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyPago"></tbody>
+        <tfoot id="tfootPago"></tfoot>
+      </table>
+    </div>
+    <div class="foot">Vista integrada dentro del mismo programa: consolida el valor individual de cada persona y entrega la suma total. No requiere archivo aparte.</div>
+  </div>
+</div>
+
+<!-- Dialogo mensaje -->
+<dialog id="dlgMsg">
+  <div class="dlg-h" id="dlgTitle">Enviar valor</div>
+  <div class="dlg-b">
+    <label class="fld">Mensaje (editable)</label>
+    <textarea class="msgbox" id="dlgTxt"></textarea>
+    <div class="hint">Incluye el valor y un enlace de confirmación. Al abrir WhatsApp o el correo el mensaje va prellenado; luego solo presionas enviar.</div>
+  </div>
+  <div class="dlg-f">
+    <button class="btn-ghost" id="dlgCopy">Copiar enlace confirmación</button>
+    <button class="btn-ghost" onclick="dlgMsg.close()">Cerrar</button>
+    <button class="btn" id="dlgSend">Abrir y enviar</button>
+  </div>
+</dialog>
+
+<script>
+const CLP = n => '$' + (Math.round(n||0)).toLocaleString('es-CL');
+const $ = id => document.getElementById(id);
+const KEY = 'sistemaRotacionesV1';
+const ESTAMENTOS = ['EU','TENS','Médicos'];
+const estClass = e => e==='EU'?'eu':e==='TENS'?'tens':'med';
+
+let DB = load();
+function load(){ try{return JSON.parse(localStorage.getItem(KEY))||{meses:{}};}catch(e){return {meses:{}};} }
+function save(){ localStorage.setItem(KEY, JSON.stringify(DB)); }
+
+// mes actual
+let MES = (new Date()).toISOString().slice(0,7);
+
+// Nómina de ejemplo pre-cargada (editable). Solo se carga en el primer uso, cuando no hay datos.
+const NOMINA_EJEMPLO = [
+  {nombre:'Dra. Carolina Rojas',   estamento:'Médicos', valor:1200000, tel:'+56 9 1111 1111', mail:'c.rojas@correo.cl'},
+  {nombre:'Dr. Felipe Muñoz',      estamento:'Médicos', valor:1150000, tel:'+56 9 1111 2222', mail:'f.munoz@correo.cl'},
+  {nombre:'Dr. Andrés Vega',       estamento:'Médicos', valor:1100000, tel:'+56 9 1111 3333', mail:'a.vega@correo.cl'},
+  {nombre:'EU Valentina Soto',     estamento:'EU',      valor:820000,  tel:'+56 9 2222 1111', mail:'v.soto@correo.cl'},
+  {nombre:'EU Javiera Fuentes',    estamento:'EU',      valor:820000,  tel:'+56 9 2222 2222', mail:'j.fuentes@correo.cl'},
+  {nombre:'EU Marcela Díaz',       estamento:'EU',      valor:800000,  tel:'+56 9 2222 3333', mail:'m.diaz@correo.cl'},
+  {nombre:'TENS Rodrigo Pérez',    estamento:'TENS',    valor:540000,  tel:'+56 9 3333 1111', mail:'r.perez@correo.cl'},
+  {nombre:'TENS Camila Torres',    estamento:'TENS',    valor:540000,  tel:'+56 9 3333 2222', mail:'c.torres@correo.cl'},
+  {nombre:'TENS Ignacio Herrera',  estamento:'TENS',    valor:520000,  tel:'+56 9 3333 3333', mail:'i.herrera@correo.cl'},
+  {nombre:'TENS Paula Contreras',  estamento:'TENS',    valor:520000,  tel:'+56 9 3333 4444', mail:'p.contreras@correo.cl'}
+];
+function nuevaPersona(d){
+  return {
+    id: Date.now()+Math.random().toString(16).slice(2,6),
+    nombre:d.nombre, estamento:d.estamento, valor:d.valor||0,
+    tel:d.tel||'', mail:d.mail||'', metodo:'whatsapp',
+    enviado:false, fechaEnvio:null, recibido:false, fechaRecibo:null, valorRecibido:null,
+    token:'CNF-'+Math.random().toString(36).slice(2,8).toUpperCase(), doc:null
+  };
+}
+function seedNomina(mes){ return {personas: NOMINA_EJEMPLO.map(nuevaPersona)}; }
+if(Object.keys(DB.meses).length===0){ DB.meses[MES] = seedNomina(MES); save(); }
+$('mes').value = MES;
+function ensureMes(){ if(!DB.meses[MES]) DB.meses[MES] = {personas:[]}; return DB.meses[MES]; }
+
+$('mes').addEventListener('change',e=>{MES=e.target.value; render();});
+$('metodoDef').addEventListener('change',render);
+
+// Alta
+$('btnAdd').addEventListener('click',()=>{
+  const nom = $('fNom').value.trim();
+  const val = parseFloat($('fVal').value)||0;
+  if(!nom){alert('Ingresa el nombre.');return;}
+  const np = nuevaPersona({nombre:nom, estamento:$('fEst').value, valor:val, tel:$('fTel').value.trim(), mail:$('fMail').value.trim()});
+  np.metodo = $('metodoDef').value;
+  ensureMes().personas.push(np);
+  $('fNom').value=''; $('fVal').value=''; $('fTel').value=''; $('fMail').value='';
+  save(); render();
+});
+
+function persona(id){ return ensureMes().personas.find(p=>p.id===id); }
+
+// Construir enlace de confirmación (token) — abre esta misma página con parámetro
+function linkConfirm(p){
+  const base = location.href.split('#')[0].split('?')[0];
+  return base + '?confirmar=' + encodeURIComponent(p.token);
+}
+
+function mensaje(p){
+  return `Hola ${p.nombre}, se comparte el valor de tu rotación correspondiente a ${MES}: ${CLP(p.valor)}.\n`+
+  `Adjunta tu boleta/factura y confirma la recepción en el siguiente enlace:\n${linkConfirm(p)}\n\n`+
+  `Código de confirmación: ${p.token}`;
+}
+
+// Envío
+let sendCtx=null;
+function abrirEnvio(id){
+  const p=persona(id); sendCtx=p;
+  $('dlgTitle').textContent = 'Enviar valor a '+p.nombre+' ('+(p.metodo==='whatsapp'?'WhatsApp':'Correo')+')';
+  $('dlgTxt').value = mensaje(p);
+  $('dlgMsg').showModal();
+}
+$('dlgSend').addEventListener('click',()=>{
+  const p=sendCtx; if(!p)return;
+  const txt = encodeURIComponent($('dlgTxt').value);
+  if(p.metodo==='whatsapp'){
+    const tel=(p.tel||'').replace(/[^0-9]/g,'');
+    window.open('https://wa.me/'+tel+'?text='+txt,'_blank');
+  }else{
+    const subj = encodeURIComponent('Valor de rotación '+MES+' — '+p.nombre);
+    window.location.href='mailto:'+(p.mail||'')+'?subject='+subj+'&body='+txt;
+  }
+  p.enviado=true; p.fechaEnvio=new Date().toISOString().slice(0,10);
+  save(); render(); $('dlgMsg').close();
+});
+$('dlgCopy').addEventListener('click',()=>{
+  if(!sendCtx)return;
+  navigator.clipboard.writeText(linkConfirm(sendCtx)).then(()=>{ $('dlgCopy').textContent='¡Copiado!'; setTimeout(()=>$('dlgCopy').textContent='Copiar enlace confirmación',1500);});
+});
+
+// Recepción / valor recibido
+function marcarRecibido(id, chk){
+  const p=persona(id); p.recibido=chk;
+  p.fechaRecibo = chk? new Date().toISOString().slice(0,10):null;
+  if(chk && p.valorRecibido==null) p.valorRecibido=p.valor;
+  save(); render();
+}
+function setValorRecibido(id,v){
+  const p=persona(id); p.valorRecibido = v===''?null:parseFloat(v);
+  save(); renderTotals();
+  const row=document.querySelector('[data-cuadre="'+id+'"]'); if(row) row.innerHTML=cuadreHTML(p);
+}
+function cuadreHTML(p){
+  if(!p.recibido || p.valorRecibido==null) return '<span style="color:var(--muted)">—</span>';
+  const dif = (p.valorRecibido||0)-(p.valor||0);
+  if(Math.abs(dif)<1) return '<span class="cuadre-ok">✓ Cuadra</span>';
+  return '<span class="cuadre-bad">✗ '+(dif>0?'+':'')+CLP(dif)+'</span>';
+}
+
+// Documento adjunto
+function adjuntar(id, file){
+  if(!file)return;
+  if(file.size>3*1024*1024){alert('Archivo muy grande (máx 3 MB para guardar localmente).');return;}
+  const r=new FileReader();
+  r.onload=()=>{ const p=persona(id); p.doc={name:file.name,dataUrl:r.result}; save(); render(); };
+  r.readAsDataURL(file);
+}
+function quitarDoc(id){ const p=persona(id); if(confirm('¿Quitar documento adjunto?')){p.doc=null;save();render();} }
+function eliminar(id){ if(confirm('¿Eliminar esta persona del período?')){ const m=ensureMes(); m.personas=m.personas.filter(p=>p.id!==id); save(); render(); } }
+function cambiarMetodo(id,v){ persona(id).metodo=v; save(); }
+
+// Render
+function render(){
+  $('mes').value=MES; $('mesLbl').textContent=MES;
+  const pers = ensureMes().personas;
+  const tb=$('tbody'); tb.innerHTML='';
+  if(!pers.length){ tb.innerHTML='<tr><td colspan="9" class="empty">Sin personas en este período. Agrega la primera arriba.</td></tr>'; renderTotals(); return; }
+
+  ESTAMENTOS.forEach(est=>{
+    const grupo = pers.filter(p=>p.estamento===est);
+    if(!grupo.length) return;
+    const sub = grupo.reduce((a,p)=>a+(p.valor||0),0);
+    const gr=document.createElement('tr'); gr.className='estGroup';
+    gr.innerHTML=`<td colspan="2">${est} · ${grupo.length} persona(s)</td><td class="num">${CLP(sub)}</td><td colspan="6"></td>`;
+    tb.appendChild(gr);
+
+    grupo.forEach(p=>{
+      const tr=document.createElement('tr');
+      const estado = p.recibido?'<span class="pill conf">Confirmado</span>':(p.enviado?'<span class="pill sent">Enviado</span>':'<span class="pill pend">Pendiente</span>');
+      tr.innerHTML = `
+        <td><strong>${esc(p.nombre)}</strong><div style="font-size:11px;color:var(--muted)">${p.fechaEnvio?('Env: '+p.fechaEnvio):''} ${p.fechaRecibo?(' · Rec: '+p.fechaRecibo):''}</div></td>
+        <td><span class="tag ${estClass(est)}">${est}</span></td>
+        <td class="num">${CLP(p.valor)}</td>
+        <td>${estado}</td>
+        <td>
+          <div class="actions">
+            <select class="btn-sm" style="padding:5px" onchange="cambiarMetodo('${p.id}',this.value)">
+              <option value="whatsapp" ${p.metodo==='whatsapp'?'selected':''}>WA</option>
+              <option value="mail" ${p.metodo==='mail'?'selected':''}>Mail</option>
+            </select>
+            <button class="btn-sm ${p.metodo==='whatsapp'?'wa':'ml'}" onclick="abrirEnvio('${p.id}')">Enviar</button>
+          </div>
+        </td>
+        <td>
+          <label style="display:flex;gap:6px;align-items:center;font-size:12px">
+            <input type="checkbox" ${p.recibido?'checked':''} onchange="marcarRecibido('${p.id}',this.checked)">
+            recibido
+          </label>
+          ${p.recibido?`<input class="rcv-input btn-sm" type="number" value="${p.valorRecibido??''}" placeholder="valor recibido" oninput="setValorRecibido('${p.id}',this.value)">`:''}
+        </td>
+        <td data-cuadre="${p.id}">${cuadreHTML(p)}</td>
+        <td>
+          ${p.doc?`<a class="doc-link" href="${p.doc.dataUrl}" download="${esc(p.doc.name)}" title="${esc(p.doc.name)}">📎 ver</a> <button class="btn-sm btn-ghost" onclick="quitarDoc('${p.id}')">✕</button>`
+          :`<label class="btn-sm btn-ghost" style="cursor:pointer">Adjuntar<input type="file" hidden accept="image/*,application/pdf" onchange="adjuntar('${p.id}',this.files[0])"></label>`}
+        </td>
+        <td><button class="btn-sm btn-ghost" onclick="eliminar('${p.id}')" title="Eliminar">🗑</button></td>`;
+      tb.appendChild(tr);
+    });
+  });
+  renderTotals();
+  renderPlanilla();
+}
+
+// Planilla total de pagos integrada (consolidado)
+$('chkTodos').addEventListener('change',renderPlanilla);
+function renderPlanilla(){
+  const todos = $('chkTodos').checked;
+  const meses = todos ? Object.keys(DB.meses).sort() : [MES];
+  const tb=$('tbodyPago'); tb.innerHTML='';
+  let tVal=0,tRec=0,filas=0,pagados=0;
+  meses.forEach(m=>{
+    (DB.meses[m]?.personas||[]).forEach(p=>{
+      filas++;
+      const rec = (p.recibido&&p.valorRecibido!=null)?p.valorRecibido:null;
+      const dif = rec!=null?(rec-(p.valor||0)):null;
+      tVal+=(p.valor||0); if(rec!=null)tRec+=rec;
+      const pagado = p.recibido&&p.valorRecibido!=null&&Math.abs(dif)<1;
+      if(pagado)pagados++;
+      const estado = !p.recibido?'<span class="pill pend">Pendiente</span>'
+        : (rec==null?'<span class="pill sent">Recibido s/valor</span>'
+        : (Math.abs(dif)<1?'<span class="pill conf">Pagado ✓</span>':'<span class="pill" style="background:#fee2e2;color:#991b1b">Diferencia</span>'));
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td style="font-size:12px;color:var(--muted)">${m}</td>
+        <td><strong>${esc(p.nombre)}</strong></td>
+        <td><span class="tag ${estClass(p.estamento)}">${p.estamento}</span></td>
+        <td class="num">${CLP(p.valor)}</td>
+        <td class="num">${rec!=null?CLP(rec):'—'}</td>
+        <td class="num">${dif!=null?(Math.abs(dif)<1?'<span class="cuadre-ok">$0</span>':'<span class="cuadre-bad">'+(dif>0?'+':'')+CLP(dif)+'</span>'):'—'}</td>
+        <td>${estado}</td>`;
+      tb.appendChild(tr);
+    });
+  });
+  if(!filas) tb.innerHTML='<tr><td colspan="7" class="empty">Sin registros para mostrar.</td></tr>';
+  $('tfootPago').innerHTML =
+    `<tr style="font-weight:800;background:var(--soft)">
+      <td colspan="3">SUMA TOTAL${todos?' (todos los meses)':' · '+MES}</td>
+      <td class="num">${CLP(tVal)}</td>
+      <td class="num">${CLP(tRec)}</td>
+      <td class="num">${(()=>{const d=tRec-tVal;return d===0?'<span class="cuadre-ok">$0</span>':(pagados===0?'—':'<span class="'+(Math.abs(d)<1?'cuadre-ok':'cuadre-bad')+'">'+(d>0?'+':'')+CLP(d)+'</span>')})()}</td>
+      <td>${pagados}/${filas} pagados</td>
+    </tr>`;
+}
+
+function renderTotals(){
+  const pers = ensureMes().personas;
+  const tot={EU:0,TENS:0,'Médicos':0};
+  pers.forEach(p=>tot[p.estamento]+=(p.valor||0));
+  const total=tot.EU+tot.TENS+tot['Médicos'];
+  $('kEU').textContent=CLP(tot.EU); $('kTENS').textContent=CLP(tot.TENS);
+  $('kMED').textContent=CLP(tot['Médicos']); $('kTOT').textContent=CLP(total);
+  $('fTotal').textContent=CLP(total);
+  $('kPers').textContent=pers.length;
+  $('kSent').textContent=pers.filter(p=>p.enviado).length;
+  $('kConf').textContent=pers.filter(p=>p.recibido).length;
+  let cuad=0,dif=0;
+  pers.forEach(p=>{ if(p.recibido&&p.valorRecibido!=null){ Math.abs((p.valorRecibido||0)-(p.valor||0))<1?cuad++:dif++; }});
+  $('kCuad').textContent=cuad+' / '+dif;
+}
+
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+// Confirmación vía enlace (?confirmar=TOKEN)
+(function(){
+  const t=new URLSearchParams(location.search).get('confirmar');
+  if(!t)return;
+  for(const m in DB.meses){
+    const p=DB.meses[m].personas.find(x=>x.token===t);
+    if(p){ p.recibido=true; p.fechaRecibo=new Date().toISOString().slice(0,10); if(p.valorRecibido==null)p.valorRecibido=p.valor; MES=m; save();
+      setTimeout(()=>alert('Recepción confirmada para '+p.nombre+' — '+CLP(p.valor)+' ('+m+').'),200); break; }
+  }
+})();
+
+// Export CSV
+$('btnCSV').addEventListener('click',()=>{
+  const pers=ensureMes().personas;
+  let csv='Estamento,Nombre,Valor rotacion,Enviado,Fecha envio,Recibido,Fecha recepcion,Valor recibido,Cuadre,Documento\n';
+  pers.forEach(p=>{
+    const dif=(p.valorRecibido!=null)?((p.valorRecibido||0)-(p.valor||0)):'';
+    const cu=(p.recibido&&p.valorRecibido!=null)?(Math.abs(dif)<1?'Cuadra':'Diferencia '+dif):'';
+    csv+=[p.estamento,'"'+p.nombre+'"',p.valor,p.enviado?'Si':'No',p.fechaEnvio||'',p.recibido?'Si':'No',p.fechaRecibo||'',p.valorRecibido??'',cu,p.doc?p.doc.name:''].join(',')+'\n';
+  });
+  const total=pers.reduce((a,p)=>a+(p.valor||0),0);
+  csv+=',,TOTAL,'+total+'\n';
+  dl(new Blob([csv],{type:'text/csv'}),'rotaciones_'+MES+'.csv');
+});
+$('btnBackup').addEventListener('click',()=>dl(new Blob([JSON.stringify(DB,null,2)],{type:'application/json'}),'respaldo_rotaciones.json'));
+$('btnRestore').addEventListener('click',()=>$('fileRestore').click());
+$('fileRestore').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f)return; const r=new FileReader();
+  r.onload=()=>{ try{DB=JSON.parse(r.result);save();render();alert('Respaldo restaurado.');}catch(x){alert('Archivo inválido.');}};
+  r.readAsText(f);
+});
+function dl(blob,name){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);}
+
+// ===== Adjuntar nómina desde Excel =====
+function normEst(v){
+  const s=(v||'').toString().trim().toLowerCase();
+  if(s.startsWith('med')||s.startsWith('méd')||s==='medico'||s==='médico') return 'Médicos';
+  if(s.startsWith('ten')) return 'TENS';
+  if(s.startsWith('eu')||s.startsWith('enf')) return 'EU';
+  return 'EU';
+}
+function pick(row,keys){
+  for(const k in row){ const kk=k.toString().trim().toLowerCase();
+    if(keys.some(t=>kk.includes(t))) return row[k];
+  } return '';
+}
+function importarFilas(filas){
+  if(!filas.length){alert('No se encontraron filas en el archivo.');return;}
+  const m=ensureMes();
+  if($('chkReemplazar').checked) m.personas=[];
+  let n=0;
+  filas.forEach(r=>{
+    const nombre=(pick(r,['nombre','nombre y apellido','funcionario','persona'])||'').toString().trim();
+    if(!nombre) return;
+    const valor=parseFloat((pick(r,['valor','rotaci','monto','pago'])||'0').toString().replace(/[^0-9.-]/g,''))||0;
+    m.personas.push(nuevaPersona({
+      nombre, estamento:normEst(pick(r,['estamento','cargo','tipo'])),
+      valor, tel:(pick(r,['whatsapp','telefono','teléfono','celular','fono'])||'').toString().trim(),
+      mail:(pick(r,['correo','mail','email','e-mail'])||'').toString().trim()
+    }));
+    n++;
+  });
+  save(); render();
+  $('importInfo').textContent = '✔ '+n+' persona(s) importada(s) a '+MES;
+}
+$('fileNomina').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const wb=XLSX.read(ev.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const filas=XLSX.utils.sheet_to_json(ws,{defval:''});
+      importarFilas(filas);
+    }catch(x){ alert('No se pudo leer el archivo. Verifica que sea Excel o CSV válido.\n'+x.message); }
+  };
+  r.readAsArrayBuffer(f);
+  e.target.value='';
+});
+$('btnPlantilla').addEventListener('click',()=>{
+  const datos=[
+    {Nombre:'Dra. Ejemplo Apellido',Estamento:'Médicos',Valor:1200000,WhatsApp:'+56 9 1234 5678',Correo:'ejemplo@correo.cl'},
+    {Nombre:'EU Ejemplo Apellido',Estamento:'EU',Valor:820000,WhatsApp:'+56 9 1234 5678',Correo:'ejemplo@correo.cl'},
+    {Nombre:'TENS Ejemplo Apellido',Estamento:'TENS',Valor:540000,WhatsApp:'+56 9 1234 5678',Correo:'ejemplo@correo.cl'}
+  ];
+  const ws=XLSX.utils.json_to_sheet(datos);
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Nomina');
+  XLSX.writeFile(wb,'plantilla_nomina.xlsx');
+});
+$('btnEjemplo').addEventListener('click',()=>{
+  if(ensureMes().personas.length && !confirm('¿Agregar la nómina de ejemplo al período actual?')) return;
+  importarFilas(NOMINA_EJEMPLO.map(d=>({Nombre:d.nombre,Estamento:d.estamento,Valor:d.valor,WhatsApp:d.tel,Correo:d.mail})));
+});
+
+render();
+</script>
+</body>
+</html>
