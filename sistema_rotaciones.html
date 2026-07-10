@@ -189,10 +189,13 @@
 
   <!-- Planilla total de pagos (integrada) -->
   <div class="card">
-    <h2>Planilla total de pagos (consolidado)
-      <label style="font-weight:400;font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center">
-        <input type="checkbox" id="chkTodos"> incluir todos los meses
-      </label>
+    <h2>Resumen de pagos
+      <span style="display:flex;gap:10px;align-items:center">
+        <label style="font-weight:400;font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center">
+          <input type="checkbox" id="chkTodos"> incluir todos los meses
+        </label>
+        <button class="btn btn-sm" id="btnEnviarResumen">✉ Enviar resumen</button>
+      </span>
     </h2>
     <div style="overflow-x:auto">
       <table id="tablaPago">
@@ -404,6 +407,46 @@ function render(){
   renderTotals();
   renderPlanilla();
 }
+
+// Correo destino fijo para el resumen de pagos
+const MAIL_RESUMEN = 'igalanspa@gmail.com';
+
+function textoResumen(){
+  const todos = $('chkTodos').checked;
+  const meses = todos ? Object.keys(DB.meses).sort() : [MES];
+  const tot={EU:0,TENS:0,'Médicos':0}; let tVal=0,tRec=0,pers=0,env=0,conf=0,pag=0,dif=0;
+  const lineas=[];
+  meses.forEach(m=>{
+    (DB.meses[m]?.personas||[]).forEach(p=>{
+      pers++; tot[p.estamento]+=(p.valor||0); tVal+=(p.valor||0);
+      if(p.enviado)env++;
+      const rec=(p.recibido&&p.valorRecibido!=null)?p.valorRecibido:null;
+      if(p.recibido)conf++;
+      if(rec!=null){ tRec+=rec; Math.abs(rec-(p.valor||0))<1?pag++:dif++; }
+      const est=!p.recibido?'Pendiente':(rec==null?'Recibido s/valor':(Math.abs(rec-(p.valor||0))<1?'Pagado ✓':'Diferencia '+CLP(rec-(p.valor||0))));
+      lineas.push(`${todos?'['+m+'] ':''}${p.estamento} · ${p.nombre} · ${CLP(p.valor)} · ${est}`);
+    });
+  });
+  const periodo = todos ? 'Todos los meses' : MES;
+  return `RESUMEN DE PAGOS — ${periodo}\n`+
+    `Generado: ${new Date().toLocaleString('es-CL')}\n`+
+    `----------------------------------------\n`+
+    `Total Médicos: ${CLP(tot['Médicos'])}\n`+
+    `Total EU:      ${CLP(tot.EU)}\n`+
+    `Total TENS:    ${CLP(tot.TENS)}\n`+
+    `TOTAL GENERAL: ${CLP(tVal)}\n`+
+    `----------------------------------------\n`+
+    `Personas: ${pers}  |  Enviados: ${env}  |  Confirmados: ${conf}\n`+
+    `Pagados (cuadran): ${pag}  |  Con diferencia: ${dif}\n`+
+    `Valor recibido acumulado: ${CLP(tRec)}  |  Saldo vs asignado: ${CLP(tRec-tVal)}\n`+
+    `----------------------------------------\nDETALLE:\n`+lineas.join('\n');
+}
+
+$('btnEnviarResumen').addEventListener('click',()=>{
+  const cuerpo = textoResumen();
+  const asunto = 'Resumen de pagos — '+($('chkTodos').checked?'Consolidado':MES);
+  window.location.href = 'mailto:'+MAIL_RESUMEN+'?subject='+encodeURIComponent(asunto)+'&body='+encodeURIComponent(cuerpo);
+});
 
 // Planilla total de pagos integrada (consolidado)
 $('chkTodos').addEventListener('change',renderPlanilla);
