@@ -1,0 +1,76 @@
+<!-- ============================================================
+     BOTÓN "ENVIAR RESUMEN" POR DEPARTAMENTO  ·  IGALAN
+     Pegar este bloque dentro de la vista "Resumen de pagos",
+     junto a los botones "Exportar a Excel" / "Imprimir nómina".
+     Envía el resumen del departamento de ESA página a:
+        igalanspa@gmail.com
+     Funciona igual en /medicos, /tens y /eu (detecta el depto solo).
+     ============================================================ -->
+
+<button id="btnEnviarResumen" type="button"
+        style="padding:8px 14px;border:none;border-radius:8px;background:#1e3a8a;color:#fff;font-weight:600;cursor:pointer">
+  ✉ Enviar resumen
+</button>
+
+<script>
+(function(){
+  const MAIL = 'igalanspa@gmail.com';
+
+  // Detecta el departamento a partir del título / encabezado de la página
+  function depto(){
+    const t = (document.querySelector('h1')?.textContent || document.title || '');
+    if (/m[eé]dico/i.test(t)) return 'Médicos';
+    if (/tens/i.test(t))      return 'TENS';
+    if (/\bEU\b|enfermer/i.test(t)) return 'Enfermeras (EU)';
+    return (t || 'Departamento').trim();
+  }
+
+  // Ubica la tabla de "Resumen de pagos" (su encabezado contiene "Total a pagar")
+  function tablaResumen(){
+    return [...document.querySelectorAll('table')].find(tb =>
+      /total a pagar/i.test((tb.tHead || tb.querySelector('thead'))?.textContent || ''));
+  }
+
+  // Convierte "$1.234.567" -> 1234567
+  function aNumero(s){
+    return parseFloat((s||'').replace(/[^\d,-]/g,'').replace(/\./g,'').replace(',','.')) || 0;
+  }
+
+  function construir(){
+    const tb = tablaResumen();
+    if(!tb){ alert('Abre la pestaña "Resumen de pagos" antes de enviar.'); return null; }
+    const heads = [...tb.querySelectorAll('thead th')].map(th => th.textContent.trim());
+    const iNom = heads.findIndex(h => /nombre/i.test(h));
+    const iTot = heads.findIndex(h => /total a pagar/i.test(h));
+    let lineas = [], total = 0;
+    tb.querySelectorAll('tbody tr').forEach(tr => {
+      const c = [...tr.children].map(td => td.textContent.trim());
+      if(!c[iNom]) return;
+      const val = c[iTot] || '';
+      total += aNumero(val);
+      lineas.push(c[iNom] + ' · ' + val);
+    });
+    const mes = (document.querySelector('input[type="month"]')?.value) || '';
+    return { mes, total, lineas };
+  }
+
+  document.getElementById('btnEnviarResumen').addEventListener('click', function(){
+    const d = construir(); if(!d) return;
+    const dep = depto();
+    const asunto = 'Resumen de pagos — ' + dep + (d.mes ? ' — ' + d.mes : '');
+    const cuerpo =
+      'RESUMEN DE PAGOS\n' +
+      'Departamento: ' + dep + '\n' +
+      'Mes: ' + (d.mes || '-') + '\n' +
+      'Generado: ' + new Date().toLocaleString('es-CL') + '\n' +
+      '--------------------------------------\n' +
+      (d.lineas.join('\n') || '(sin personas)') + '\n' +
+      '--------------------------------------\n' +
+      'TOTAL ' + dep + ': $' + Math.round(d.total).toLocaleString('es-CL') +
+      '  (' + d.lineas.length + ' persona(s))';
+    window.location.href = 'mailto:' + MAIL +
+      '?subject=' + encodeURIComponent(asunto) +
+      '&body='    + encodeURIComponent(cuerpo);
+  });
+})();
+</script>
